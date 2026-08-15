@@ -647,7 +647,26 @@ export default function LandingPage() {
             </div>
           </div>
 
-          <div className="text-center">
+          {/* Live Voice & Document Retrieval Showcase with Real Screenshots */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4 items-center">
+            <div className="flex flex-col items-center space-y-3">
+              <IPhone17Mockup imageSrc="/mockups/voice_assistant_response.jpeg" className="scale-95" />
+              <div className="text-center space-y-1">
+                <span className="text-[11px] font-bold text-primary">Student Voice Assistant (ગુજરાતી · English · हिंदी)</span>
+                <p className="text-[10px] text-text-secondary">Instant spoken query answers and direct assignment document download</p>
+              </div>
+            </div>
+
+            <div className="flex flex-col items-center space-y-3">
+              <IPhone17Mockup imageSrc="/mockups/ai_chat_document.jpeg" className="scale-95" />
+              <div className="text-center space-y-1">
+                <span className="text-[11px] font-bold text-cyan">In-Chat Syllabus & Assignment Fetch</span>
+                <p className="text-[10px] text-text-secondary">"Give me Fbc 1st assignment" → instant PDF preview & download link</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="text-center pt-2">
             <p className="text-xs text-text-secondary">
               🔒 The AI only responds with data verified from the student's authenticated institution. Zero hallucinations.
             </p>
@@ -804,16 +823,8 @@ export default function LandingPage() {
                   </div>
                 </div>
               </div>
-              <div className="lg:col-span-5 bg-[#0B0F17] p-6 rounded-2xl border border-white/10 text-xs space-y-3">
-                <span className="text-primary font-mono text-[10px]">Faculty Quick Action</span>
-                <div className="p-3 bg-surface rounded-xl border border-white/5">
-                  <p className="text-white font-bold">Upload Attendance Batch</p>
-                  <p className="text-text-secondary text-[11px]">Drop Excel/CSV with enrollment & scores</p>
-                </div>
-                <div className="p-3 bg-surface rounded-xl border border-white/5">
-                  <p className="text-white font-bold">Publish Academic Circular</p>
-                  <p className="text-text-secondary text-[11px]">Auto-generates 14+ searchable tags</p>
-                </div>
+              <div className="lg:col-span-5 flex justify-center">
+                <IPhone17Mockup screen="portal" className="scale-95" />
               </div>
             </div>
           )}
@@ -835,19 +846,8 @@ export default function LandingPage() {
                   </Link>
                 </div>
               </div>
-              <div className="lg:col-span-5 bg-[#0B0F17] p-6 rounded-2xl border border-white/10 text-xs space-y-3">
-                <div className="flex justify-between items-center text-text-secondary">
-                  <span>Tenant Isolation</span>
-                  <span className="text-cyan font-mono font-bold">100% Enforced</span>
-                </div>
-                <div className="flex justify-between items-center text-text-secondary">
-                  <span>Real-time Sync</span>
-                  <span className="text-primary font-mono font-bold">Supabase PostgreSQL</span>
-                </div>
-                <div className="flex justify-between items-center text-text-secondary">
-                  <span>GTU Compliance</span>
-                  <span className="text-white font-mono font-bold">Verified</span>
-                </div>
+              <div className="lg:col-span-5 flex justify-center">
+                <IPhone17Mockup screen="register" className="scale-95" />
               </div>
             </div>
           )}
