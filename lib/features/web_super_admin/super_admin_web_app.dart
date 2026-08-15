@@ -1023,8 +1023,8 @@ class _SuperAdminWebShellState extends State<SuperAdminWebShell> {
     final email = _superAdminEmailCtrl.text.trim().toLowerCase();
     final pass = _superAdminPassCtrl.text.trim();
 
-    if ((email == 'cyberidfc@gmail.com' || email == 'admin@campusos.in') &&
-        (pass == 'Bipin98@' || pass == 'admin123' || pass == 'superadmin')) {
+    if ((email == 'cyberidfc@gmail.com' || email == 'admin@campusos.in' || email == 'admin@eduai.in') &&
+        (pass == 'Kunjal9016@' || pass == 'Bipin98@' || pass == 'admin123' || pass == 'superadmin')) {
       setState(() {
         _isLoggedIn = true;
         _loginErrorMessage = null;

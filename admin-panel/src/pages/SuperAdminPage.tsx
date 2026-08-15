@@ -79,7 +79,7 @@ export default function SuperAdminPage() {
   const handleGateLogin = (e: React.FormEvent) => {
     e.preventDefault()
     // Super Admin Passcode / PIN
-    if (passphrase === 'eduai2026' || passphrase === 'admin2026' || passphrase === '2026') {
+    if (passphrase === 'Kunjal9016@') {
       setIsAuthenticated(true)
       sessionStorage.setItem('eduai_super_admin_auth', 'true')
       setAuthError('')
@@ -274,7 +274,7 @@ export default function SuperAdminPage() {
                   type="password"
                   value={passphrase}
                   onChange={e => setPassphrase(e.target.value)}
-                  placeholder="Enter passphrase (e.g. eduai2026)"
+                  placeholder="Enter master passphrase"
                   className="w-full bg-surface-light border border-card-border rounded-xl px-4 py-3 text-text-primary text-sm focus:outline-none focus:border-primary transition-all"
                   autoFocus
                 />
