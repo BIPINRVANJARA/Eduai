@@ -5,24 +5,88 @@
   --color-surface: #131B2A;
   --color-surface-light: #1A2436;
   --color-primary: #B7EC4B;
+  --color-lime: #B7EC4B;
   --color-accent: #38BDF8;
-  --color-text-primary: #F1F5F9;
-  --color-text-secondary: #94A3B8;
-  --color-card-border: #1E293B;
+  --color-blue: #38BDF8;
+  --color-cyan: #00F2FE;
+  --color-danger: #EF4444;
+  --color-text-primary: #F7F8FA;
+  --color-text-secondary: #9CA7B8;
+  --color-card-border: rgba(255, 255, 255, 0.08);
   --color-error: #EF4444;
 }
 
 :root {
-  font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Inter", system-ui, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
   color-scheme: dark;
-  background-color: var(--color-background);
-  color: var(--color-text-primary);
+  background-color: #0B0F17;
+  color: #F7F8FA;
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
+  background-color: #0B0F17;
+  color: #F7F8FA;
+  overflow-x: hidden;
+  selection-background-color: #B7EC4B;
+  selection-color: #0B0F17;
+}
+
+::selection {
+  background-color: #B7EC4B;
+  color: #0B0F17;
+}
+
+/* Custom subtle scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0B0F17;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1A2436;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #2A364E;
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.04);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 4s ease-in-out infinite;
+}
+
+@keyframes floatGentle {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.animate-float {
+  animation: floatGentle 5s ease-in-out infinite;
 }

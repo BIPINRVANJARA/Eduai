@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
+import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
 import StudentsPage from './pages/StudentsPage'
@@ -23,6 +24,10 @@ function App() {
   return (
     <Router>
       <Routes>
+        {/* 🌟 Timestunner Premium Landing Page */}
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/landing" element={<LandingPage />} />
+
         <Route 
           path="/login" 
           element={session ? <Navigate to="/ai-copilot" replace /> : <LoginPage />} 
@@ -33,7 +38,6 @@ function App() {
 
         {/* 🏫 Institution College Admin Portal */}
         <Route element={<Layout />}>
-          <Route path="/" element={<Navigate to="/ai-copilot" replace />} />
           <Route path="/ai-copilot" element={<AiCommandCenterPage />} />
           <Route path="/approvals" element={<ApprovalsPage />} />
           <Route path="/attendance-marks" element={<AttendanceMarksPage />} />

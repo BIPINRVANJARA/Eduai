@@ -32,7 +32,7 @@ const QUICK_PROMPTS = [
 ]
 
 export default function AlertsPage() {
-  const { user, institution } = useAuth()
+  const { institution } = useAuth()
   const currentInstId = institution?.id || '6c6e9b83-cabf-4b13-855b-97d2e1461177'
   const [activeTab, setActiveTab] = useState<'ai' | 'manual'>('ai')
 
