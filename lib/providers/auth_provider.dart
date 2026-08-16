@@ -217,10 +217,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
     return result;
   }
 
-  Future<void> refreshAuthSession() async {
-    await _restoreSession();
-  }
-
   Future<void> logout() async {
     await SessionService.clearSession();
     await Supabase.instance.client.auth.signOut();
