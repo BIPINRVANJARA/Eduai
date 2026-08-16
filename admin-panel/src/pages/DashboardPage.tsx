@@ -7,7 +7,7 @@ import DataTable from '../components/DataTable'
 import { useAuth } from '../contexts/AuthContext'
 
 export default function DashboardPage() {
-  const { institution } = useAuth()
+  const { institution, selectedDepartment, isDeptAdmin, assignedDepartment } = useAuth()
   const [stats, setStats] = useState({
     students: 0,
     parents: 0,
@@ -20,15 +20,22 @@ export default function DashboardPage() {
   useEffect(() => {
     async function fetchDashboardData() {
       try {
+        setLoading(true)
         const instId = institution?.id
         let studentsQ = supabase.from('students').select('*', { count: 'exact', head: true })
         let docsCountQ = supabase.from('documents').select('*', { count: 'exact', head: true })
-        let docsListQ = supabase.from('documents').select('*').order('created_at', { ascending: false }).limit(5)
+        let docsListQ = supabase.from('documents').select('*').order('created_at', { ascending: false }).limit(8)
 
         if (instId) {
           studentsQ = studentsQ.eq('institution_id', instId)
           docsCountQ = docsCountQ.eq('institution_id', instId)
           docsListQ = docsListQ.eq('institution_id', instId)
+        }
+
+        if (selectedDepartment && selectedDepartment !== 'all') {
+          studentsQ = studentsQ.eq('department', selectedDepartment)
+          docsCountQ = docsCountQ.or(`department.eq.${selectedDepartment},department.eq.General,department.eq.All`)
+          docsListQ = docsListQ.or(`department.eq.${selectedDepartment},department.eq.General,department.eq.All`)
         }
 
         const [
@@ -48,9 +55,7 @@ export default function DashboardPage() {
           activeSessions: 1
         })
         
-        if (docs) {
-          setRecentDocs(docs)
-        }
+        setRecentDocs(docs || [])
       } catch (error) {
         console.error('Error fetching dashboard data:', error)
       } finally {
@@ -59,7 +64,7 @@ export default function DashboardPage() {
     }
 
     fetchDashboardData()
-  }, [institution?.id])
+  }, [institution?.id, selectedDepartment])
 
   const docColumns = [
     { key: 'title', header: 'Title' },
@@ -75,8 +80,20 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-text-primary mb-2">Dashboard Overview</h1>
-        <p className="text-text-secondary">Welcome back to the CampusOS admin portal.</p>
+        <h1 className="text-2xl font-bold text-text-primary mb-1">
+          {isDeptAdmin && assignedDepartment 
+            ? `${assignedDepartment} Department Dashboard` 
+            : selectedDepartment !== 'all'
+              ? `${selectedDepartment} Overview`
+              : 'College-Wide Dashboard Overview'}
+        </h1>
+        <p className="text-text-secondary text-xs">
+          {isDeptAdmin && assignedDepartment
+            ? `Viewing academic records, student roster, and syllabus repository strictly for ${assignedDepartment}.`
+            : selectedDepartment !== 'all'
+              ? `Filtered view for ${selectedDepartment}. Switch Active Scope in the top bar to view other branches or College-Wide.`
+              : 'Comprehensive overview across all academic departments and students.'}
+        </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
