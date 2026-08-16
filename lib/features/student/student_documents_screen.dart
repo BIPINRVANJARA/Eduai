@@ -47,10 +47,10 @@ class _StudentDocumentsScreenState extends State<StudentDocumentsScreen> {
             .eq('category', widget.category);
 
         if (dept != null && dept.toString().isNotEmpty) {
-          query = query.eq('department', dept);
+          query = query.or('department.eq.$dept,department.eq.General,department.eq.All,department.is.null');
         }
-        if (sem != null) {
-          query = query.eq('semester', sem);
+        if (sem != null && sem.toString().isNotEmpty) {
+          query = query.or('semester.eq.$sem,semester.eq.All,semester.is.null');
         }
 
         final docsResponse = await query.order('created_at', ascending: false);

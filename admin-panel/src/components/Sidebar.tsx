@@ -8,26 +8,31 @@ import {
   FileText, 
   Upload, 
   Bell, 
+  Building2,
   Settings, 
-  LogOut
+  LogOut,
+  ShieldAlert
 } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 
-const navItems = [
-  { icon: Bot, label: 'AI Command Center', path: '/ai-copilot', highlight: true },
-  { icon: UserCheck, label: 'Student Approvals', path: '/approvals', badge: 'New' },
-  { icon: FileSpreadsheet, label: 'Attendance & Marks', path: '/attendance-marks' },
-  { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
-  { icon: Users, label: 'Enrolled Students', path: '/students' },
-  { icon: FileText, label: 'Documents Repository', path: '/documents' },
-  { icon: Upload, label: 'Manual Upload', path: '/upload' },
-  { icon: Bell, label: 'Campus Alerts', path: '/alerts' },
-  { icon: Settings, label: 'Settings', path: '/settings' },
-]
-
 export default function Sidebar() {
   const location = useLocation()
-  const { signOut, institution } = useAuth()
+  const { signOut, institution, assignedDepartment, isDeptAdmin } = useAuth()
+
+  const navItems = [
+    { icon: Bot, label: 'AI Command Center', path: '/ai-copilot', highlight: true },
+    { icon: Building2, label: 'Department Manager', path: '/departments', badge: 'Admin', hiddenForDeptAdmin: true },
+    { icon: UserCheck, label: 'Student Approvals', path: '/approvals', badge: 'New' },
+    { icon: FileSpreadsheet, label: 'Attendance & Marks', path: '/attendance-marks' },
+    { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
+    { icon: Users, label: 'Enrolled Students', path: '/students' },
+    { icon: FileText, label: 'Documents Repository', path: '/documents' },
+    { icon: Upload, label: 'Manual Upload', path: '/upload' },
+    { icon: Bell, label: 'Campus Alerts', path: '/alerts' },
+    { icon: Settings, label: 'Settings', path: '/settings' },
+  ]
+
+  const visibleNavItems = navItems.filter(item => !(item.hiddenForDeptAdmin && isDeptAdmin))
 
   return (
     <div className="w-64 bg-surface border-r border-card-border flex flex-col h-full">
@@ -45,16 +50,30 @@ export default function Sidebar() {
             </span>
           </div>
         </div>
-        {institution?.code && (
-          <div className="mt-3 bg-surface-light px-2.5 py-1 rounded-lg border border-card-border/80 flex items-center justify-between text-[11px]">
-            <span className="text-text-muted font-medium">Code: <strong className="text-text-primary">{institution.code}</strong></span>
-            <span className="bg-primary/15 text-primary text-[10px] font-bold px-1.5 py-0.5 rounded">Active Portal</span>
+
+        {/* Role & Scope Badge */}
+        <div className="mt-3 bg-surface-light p-2 rounded-xl border border-card-border/80 text-[11px] space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-text-muted font-medium">Role:</span>
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+              isDeptAdmin 
+                ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30' 
+                : 'bg-primary/15 text-primary border border-primary/30'
+            }`}>
+              {isDeptAdmin ? 'Dept Admin' : 'Institute Admin'}
+            </span>
           </div>
-        )}
+          {isDeptAdmin && assignedDepartment && (
+            <div className="flex items-center gap-1.5 text-text-primary font-semibold text-[10px] pt-1 border-t border-card-border/50 truncate">
+              <ShieldAlert size={12} className="text-cyan-400 shrink-0" />
+              <span className="truncate">{assignedDepartment}</span>
+            </div>
+          )}
+        </div>
       </div>
       
       <nav className="flex-1 px-4 space-y-1.5 mt-2 overflow-y-auto">
-        {navItems.map((item) => {
+        {visibleNavItems.map((item) => {
           const isActive = location.pathname === item.path
           return (
             <Link

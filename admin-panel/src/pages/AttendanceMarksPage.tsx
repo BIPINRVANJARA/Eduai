@@ -38,7 +38,7 @@ interface ParsedRow {
 }
 
 export default function AttendanceMarksPage() {
-  const { institution } = useAuth()
+  const { institution, selectedDepartment } = useAuth()
   const [activeTab, setActiveTab] = useState<'excel_upload' | 'live_grid'>('excel_upload')
   const [students, setStudents] = useState<StudentRecord[]>([])
   const [isLoadingStudents, setIsLoadingStudents] = useState(true)
@@ -52,7 +52,7 @@ export default function AttendanceMarksPage() {
   const [isSavingGrid, setIsSavingGrid] = useState(false)
 
   // Excel Upload state
-  const [uploadDept, setUploadDept] = useState('Information Technology')
+  const [uploadDept, setUploadDept] = useState(selectedDepartment !== 'all' ? selectedDepartment : 'Information Technology')
   const [uploadSem, setUploadSem] = useState('5')
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
   const [parsedRows, setParsedRows] = useState<ParsedRow[]>([])
@@ -63,7 +63,7 @@ export default function AttendanceMarksPage() {
 
   useEffect(() => {
     fetchStudents()
-  }, [institution?.id])
+  }, [institution?.id, selectedDepartment])
 
   const fetchStudents = async () => {
     setIsLoadingStudents(true)
@@ -75,6 +75,10 @@ export default function AttendanceMarksPage() {
 
       if (institution?.id) {
         query = query.eq('institution_id', institution.id)
+      }
+
+      if (selectedDepartment && selectedDepartment !== 'all') {
+        query = query.eq('department', selectedDepartment)
       }
 
       const { data, error } = await query

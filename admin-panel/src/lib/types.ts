@@ -5,6 +5,21 @@ export interface Profile {
   email: string;
   mobile: string;
   institution_id: string;
+  department?: string;
+  department_id?: string;
+  created_at: string;
+}
+
+export interface Department {
+  id: string;
+  institution_id: string;
+  name: string;
+  code: string;
+  hod_name: string;
+  hod_email: string;
+  hod_mobile: string;
+  status: 'active' | 'inactive';
+  student_count?: number;
   created_at: string;
 }
 

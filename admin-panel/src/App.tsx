@@ -3,6 +3,7 @@ import Layout from './components/Layout'
 import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
 import DashboardPage from './pages/DashboardPage'
+import DepartmentsPage from './pages/DepartmentsPage'
 import StudentsPage from './pages/StudentsPage'
 import ApprovalsPage from './pages/ApprovalsPage'
 import SuperAdminPage from './pages/SuperAdminPage'
@@ -36,9 +37,10 @@ function App() {
         {/* 👑 Super Admin (Platform Owner) Dedicated Portal */}
         <Route path="/super-admin" element={<SuperAdminPage />} />
 
-        {/* 🏫 Institution College Admin Portal */}
+        {/* 🏫 Institution College & Department Admin Portal */}
         <Route element={<Layout />}>
           <Route path="/ai-copilot" element={<AiCommandCenterPage />} />
+          <Route path="/departments" element={<DepartmentsPage />} />
           <Route path="/approvals" element={<ApprovalsPage />} />
           <Route path="/attendance-marks" element={<AttendanceMarksPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />

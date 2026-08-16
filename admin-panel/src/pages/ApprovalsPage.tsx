@@ -35,7 +35,7 @@ interface StudentApprovalRequest {
 }
 
 export default function ApprovalsPage() {
-  const { institution } = useAuth()
+  const { institution, selectedDepartment } = useAuth()
   const [students, setStudents] = useState<StudentApprovalRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'pending_approval' | 'approved' | 'rejected'>('pending_approval')
@@ -44,7 +44,7 @@ export default function ApprovalsPage() {
 
   useEffect(() => {
     fetchStudentRequests()
-  }, [institution?.id])
+  }, [institution?.id, selectedDepartment])
 
   const fetchStudentRequests = async () => {
     setLoading(true)
@@ -56,6 +56,10 @@ export default function ApprovalsPage() {
 
       if (institution?.id) {
         query = query.eq('institution_id', institution.id)
+      }
+
+      if (selectedDepartment && selectedDepartment !== 'all') {
+        query = query.eq('department', selectedDepartment)
       }
 
       const { data, error } = await query

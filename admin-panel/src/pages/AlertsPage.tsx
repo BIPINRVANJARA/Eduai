@@ -32,7 +32,7 @@ const QUICK_PROMPTS = [
 ]
 
 export default function AlertsPage() {
-  const { institution } = useAuth()
+  const { institution, selectedDepartment } = useAuth()
   const currentInstId = institution?.id || '6c6e9b83-cabf-4b13-855b-97d2e1461177'
   const [activeTab, setActiveTab] = useState<'ai' | 'manual'>('ai')
 
@@ -68,6 +68,9 @@ export default function AlertsPage() {
       if (currentInstId) {
         query = query.eq('created_by', currentInstId)
       }
+      if (selectedDepartment && selectedDepartment !== 'all') {
+        query = query.or(`department.eq.${selectedDepartment},department.eq.All,department.eq.General`)
+      }
       const { data, error } = await query.order('created_at', { ascending: false })
 
       if (error) throw error
@@ -81,7 +84,7 @@ export default function AlertsPage() {
 
   useEffect(() => {
     fetchAlerts()
-  }, [currentInstId])
+  }, [currentInstId, selectedDepartment])
 
   // AI Analysis
   const handleAnalyzeAlert = async (text?: string) => {

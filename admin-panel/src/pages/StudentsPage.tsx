@@ -6,7 +6,7 @@ import type { Student } from '../lib/types'
 import { useAuth } from '../contexts/AuthContext'
 
 export default function StudentsPage() {
-  const { institution } = useAuth()
+  const { institution, selectedDepartment } = useAuth()
   const [students, setStudents] = useState<Student[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -18,6 +18,10 @@ export default function StudentsPage() {
         
         if (institution?.id) {
           query = query.eq('institution_id', institution.id)
+        }
+
+        if (selectedDepartment && selectedDepartment !== 'all') {
+          query = query.eq('department', selectedDepartment)
         }
 
         if (search) {
@@ -39,7 +43,7 @@ export default function StudentsPage() {
     }, 300)
 
     return () => clearTimeout(timer)
-  }, [search, institution?.id])
+  }, [search, institution?.id, selectedDepartment])
 
   const columns = [
     { key: 'enrollment_no', header: 'Enrollment #' },

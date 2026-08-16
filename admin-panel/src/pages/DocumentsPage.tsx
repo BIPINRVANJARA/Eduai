@@ -43,7 +43,7 @@ const DEPARTMENTS = [
 ]
 
 export default function DocumentsPage() {
-  const { institution } = useAuth()
+  const { institution, selectedDepartment } = useAuth()
   const [documents, setDocuments] = useState<Document[]>([])
   const [loading, setLoading] = useState(true)
   const [category, setCategory] = useState('')
@@ -75,6 +75,10 @@ export default function DocumentsPage() {
         query = query.eq('institution_id', institution.id)
       }
 
+      if (selectedDepartment && selectedDepartment !== 'all') {
+        query = query.or(`department.eq.${selectedDepartment},department.eq.General,department.eq.All`)
+      }
+
       if (category) {
         query = query.eq('category', category)
       }
@@ -92,7 +96,7 @@ export default function DocumentsPage() {
 
   useEffect(() => {
     fetchDocuments()
-  }, [category, institution?.id])
+  }, [category, institution?.id, selectedDepartment])
 
   const handleDownload = async (fileUrl: string, fileName: string) => {
     try {
