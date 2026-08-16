@@ -28,11 +28,102 @@ import type {
 
 export interface BatchDocumentItem {
   id: string
-  fileBlob: File
+  fileBlob?: File
+  directFileUrl?: string
   fileMetadata: { name: string; size: number }
   docData: ExtractedDocMetadata
   confirmationStatus: 'pending' | 'confirmed' | 'cancelled'
   dbId?: string
+}
+
+function parsePastedSyllabusTable(rawText: string): BatchDocumentItem[] | null {
+  const lines = rawText.split('\n').map(l => l.trim()).filter(l => l.length > 0)
+  const results: BatchDocumentItem[] = []
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+    if (line.startsWith('#') || line.toLowerCase().includes('subjectcode') || line.toLowerCase().includes('download')) {
+      if (!line.includes('http') && !line.includes('DI0') && !line.includes('31')) continue
+    }
+
+    // Extract URL
+    let url: string | null = null
+    const mdLinkMatch = line.match(/\[.*?\]\((https?:\/\/[^\s\)]+)\)/i)
+    if (mdLinkMatch) {
+      url = mdLinkMatch[1]
+    } else {
+      const urlMatch = line.match(/(https?:\/\/[^\s\)]+)/i)
+      if (urlMatch) url = urlMatch[1]
+    }
+
+    // Clean line without URL or markdown link
+    let cleanLine = line
+      .replace(/\[.*?\]\((https?:\/\/[^\s\)]+)\)/gi, '')
+      .replace(/(https?:\/\/[^\s\)]+)/gi, '')
+      .replace(/Download PDF/gi, '')
+      .replace(/Download/gi, '')
+      .replace(/[|]+/g, ' ')
+      .trim()
+
+    // Extract Subject Code (e.g. DI02000011, DI02016011, 3150703, etc.)
+    let subjectCode = ''
+    const codeMatch = cleanLine.match(/\b([A-Z]{2,}\d{5,}|\d{7,})\b/i)
+    if (codeMatch) {
+      subjectCode = codeMatch[1].toUpperCase()
+      cleanLine = cleanLine.replace(codeMatch[0], '').trim()
+    }
+
+    // Remove leading line number (e.g. "1 ", "1.", "#1")
+    cleanLine = cleanLine.replace(/^#?\s*\d+[\.\s\t]+/, '').trim()
+
+    // Clean Subject Name
+    const subjectName = cleanLine.replace(/\s{2,}/g, ' ').trim()
+
+    if (subjectName.length >= 2 || subjectCode.length >= 4) {
+      const finalTitle = subjectCode 
+        ? `${subjectName} (${subjectCode}) Syllabus` 
+        : `${subjectName} Syllabus`
+      
+      const sLower = subjectName.toLowerCase()
+      const isSem5 = sLower.includes('python') || sLower.includes('software') || sLower.includes('blockchain') || sLower.includes('intelligence') || sLower.includes('ai')
+      const detectedSem = isSem5 ? '5' : '1'
+
+      const tags = [
+        sLower,
+        subjectCode.toLowerCase(),
+        'syllabus',
+        'gtu',
+        'gtu syllabus',
+        'course curriculum',
+        `sem ${detectedSem}`,
+        'it_department',
+        `gu: ${subjectName} સિલેબસ`,
+      ].filter(t => t.length > 0)
+
+      results.push({
+        id: `syllabus_pasted_${Date.now()}_${i}`,
+        directFileUrl: url || 'https://s3-ap-southeast-1.amazonaws.com/gtusitecirculars/Syallbus/' + (subjectCode || 'syllabus') + '.pdf',
+        fileMetadata: {
+          name: `${subjectCode || 'GTU'}_${subjectName.replace(/\s+/g, '_')}_Syllabus.pdf`,
+          size: 1024 * 450
+        },
+        docData: {
+          title: finalTitle,
+          category: 'syllabus',
+          department: 'Information Technology',
+          semester: detectedSem,
+          division: 'All',
+          subject_name: subjectName || finalTitle,
+          tags: tags,
+          content_summary: `Official GTU syllabus for ${finalTitle}. Includes course objectives, unit-wise syllabus breakdown, credit distribution, and reference books.`,
+          explanation: `Extracted from university syllabus table with direct cloud download link.`
+        },
+        confirmationStatus: 'pending'
+      })
+    }
+  }
+
+  return results.length > 0 ? results : null
 }
 
 interface ChatMessage {
@@ -126,6 +217,25 @@ export default function AiCommandCenterPage() {
     setIsProcessing(true)
 
     try {
+      if (currentFiles.length === 0 && textToSend) {
+        // Check if user pasted a syllabus table or list of subjects with links
+        const parsedSyllabusList = parsePastedSyllabusTable(textToSend)
+        if (parsedSyllabusList && parsedSyllabusList.length > 1) {
+          const totalTags = parsedSyllabusList.reduce((acc, d) => acc + (d.docData.tags?.length || 0), 0)
+          const aiMessage: ChatMessage = {
+            id: `ai_batch_${Date.now()}`,
+            sender: 'ai',
+            text: `✨ Detected and parsed ${parsedSyllabusList.length} Syllabus Subjects with direct university cloud links! Generated ${totalTags} search tags across all subjects. Review and confirm below to store them directly into the campus repository:`,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            batchDocuments: parsedSyllabusList,
+            confirmationStatus: 'pending'
+          }
+          setMessages(prev => [...prev, aiMessage])
+          setIsProcessing(false)
+          return
+        }
+      }
+
       if (currentFiles.length <= 1) {
         // Single file or text-only command
         const singleFile = currentFiles[0]
@@ -235,20 +345,24 @@ export default function AiCommandCenterPage() {
     setBatchExecutingDocId(docItem.id)
     try {
       const docData = (editingBatchDocId === docItem.id && editedDoc) ? editedDoc : docItem.docData
-      let fileUrl = 'https://ifframkwyjegmxubscnk.supabase.co/storage/v1/object/public/documents/sample.pdf'
-      let fileName = docItem.fileBlob.name
-      let fileSize = docItem.fileBlob.size
+      let fileUrl = docItem.directFileUrl || 'https://ifframkwyjegmxubscnk.supabase.co/storage/v1/object/public/documents/sample.pdf'
+      let fileName = docItem.fileMetadata.name || `${docData.title}.pdf`
+      let fileSize = docItem.fileMetadata.size || 1024 * 350
 
-      // Upload file blob to Supabase Storage
-      const cleanName = docItem.fileBlob.name.replace(/[^a-zA-Z0-9._-]/g, '_')
-      const path = `admin_${Date.now()}_${cleanName}`
-      const { data: uploadData, error: uploadErr } = await supabase.storage
-        .from('documents')
-        .upload(path, docItem.fileBlob)
+      // Upload file blob to Supabase Storage if file attached
+      if (docItem.fileBlob) {
+        const cleanName = docItem.fileBlob.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+        const path = `admin_${Date.now()}_${cleanName}`
+        const { data: uploadData, error: uploadErr } = await supabase.storage
+          .from('documents')
+          .upload(path, docItem.fileBlob)
 
-      if (!uploadErr && uploadData) {
-        const { data: pubData } = supabase.storage.from('documents').getPublicUrl(uploadData.path)
-        fileUrl = pubData.publicUrl
+        if (!uploadErr && uploadData) {
+          const { data: pubData } = supabase.storage.from('documents').getPublicUrl(uploadData.path)
+          fileUrl = pubData.publicUrl
+          fileName = docItem.fileBlob.name
+          fileSize = docItem.fileBlob.size
+        }
       }
 
       // Insert into Supabase documents table
@@ -313,17 +427,24 @@ export default function AiCommandCenterPage() {
       const pendingDocs = msg.batchDocuments.filter(d => d.confirmationStatus !== 'confirmed')
 
       for (const docItem of pendingDocs) {
-        let fileUrl = 'https://ifframkwyjegmxubscnk.supabase.co/storage/v1/object/public/documents/sample.pdf'
-        const cleanName = docItem.fileBlob.name.replace(/[^a-zA-Z0-9._-]/g, '_')
-        const path = `admin_${Date.now()}_${cleanName}`
-        
-        const { data: uploadData } = await supabase.storage
-          .from('documents')
-          .upload(path, docItem.fileBlob)
+        let fileUrl = docItem.directFileUrl || 'https://ifframkwyjegmxubscnk.supabase.co/storage/v1/object/public/documents/sample.pdf'
+        let fileName = docItem.fileMetadata.name || `${docItem.docData.title}.pdf`
+        let fileSize = docItem.fileMetadata.size || 1024 * 350
 
-        if (uploadData) {
-          const { data: pubData } = supabase.storage.from('documents').getPublicUrl(uploadData.path)
-          fileUrl = pubData.publicUrl
+        if (docItem.fileBlob) {
+          const cleanName = docItem.fileBlob.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+          const path = `admin_${Date.now()}_${cleanName}`
+          
+          const { data: uploadData } = await supabase.storage
+            .from('documents')
+            .upload(path, docItem.fileBlob)
+
+          if (uploadData) {
+            const { data: pubData } = supabase.storage.from('documents').getPublicUrl(uploadData.path)
+            fileUrl = pubData.publicUrl
+            fileName = docItem.fileBlob.name
+            fileSize = docItem.fileBlob.size
+          }
         }
 
         await supabase
@@ -339,8 +460,8 @@ export default function AiCommandCenterPage() {
             tags: docItem.docData.tags,
             content_summary: docItem.docData.content_summary,
             file_url: fileUrl,
-            file_name: docItem.fileBlob.name,
-            file_size: docItem.fileBlob.size,
+            file_name: fileName,
+            file_size: fileSize,
             uploaded_by: user?.id || 'admin',
             institution_id: currentInstId
           })

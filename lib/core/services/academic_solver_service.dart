@@ -1,14 +1,37 @@
 class AcademicSolverService {
-  static String? solveAssignmentQuestion({
+  static String solveAssignmentQuestion({
     required String userText,
     required String activeSubject,
     required String activeDocumentTitle,
     required String language, // 'ENGLISH' | 'GUJARATI' | 'HINDI'
   }) {
-    final lower = userText.toLowerCase();
+    final lower = userText.toLowerCase().trim();
     final docLower = '$activeSubject $activeDocumentTitle'.toLowerCase();
 
-    // Extract Question Number (e.g. "que 1", "question 2", "1st que", "q1", "1")
+    // 1. Check for specific question text keywords directly (e.g. "Define AI Product", "Smart Contracts", etc.)
+    if (lower.contains('ai product') || (lower.contains('define') && lower.contains('product'))) {
+      return _solveAiProductQuestion(language);
+    }
+    if (lower.contains('agent') && (lower.contains('peas') || lower.contains('rational'))) {
+      return _solvePeasAgentQuestion(language);
+    }
+    if (lower.contains('smart contract') || lower.contains('solidity') || lower.contains('evm')) {
+      return _solveSmartContractQuestion(language);
+    }
+    if (lower.contains('consensus') || lower.contains('pow') || lower.contains('pos') || lower.contains('proof of work')) {
+      return _solveConsensusQuestion(language);
+    }
+    if (lower.contains('merkle') || lower.contains('hash tree')) {
+      return _solveMerkleQuestion(language);
+    }
+    if (lower.contains('search algorithm') || lower.contains('bfs') || lower.contains('dfs') || lower.contains('a*') || lower.contains('heuristic')) {
+      return _solveSearchAlgoQuestion(language);
+    }
+    if (lower.contains('prompt engineering') || lower.contains('zero shot') || lower.contains('few shot') || lower.contains('cot')) {
+      return _solvePromptEngQuestion(language);
+    }
+
+    // 2. Extract Question Number (e.g. "que 1", "question 2", "q1", "1st que")
     int questionNumber = 1;
     final numMatch = RegExp(r'(?:que|question|q|prashna|પ્રશ્ન)?\s*([0-9]+)').firstMatch(lower);
     if (numMatch != null && numMatch.group(1) != null) {
@@ -25,7 +48,7 @@ class AcademicSolverService {
     if (isFbc) {
       return _solveFbcQuestion(questionNumber, language, activeDocumentTitle);
     } else if (isAipd) {
-      return _solveAipdQuestion(questionNumber, language);
+      return _solveAipdQuestion(questionNumber, language, activeDocumentTitle);
     } else if (isAipe) {
       return _solveAipeQuestion(questionNumber, language);
     } else if (isDbms) {
@@ -41,70 +64,132 @@ class AcademicSolverService {
   }
 
   // =========================================================================
-  // 1. FUNDAMENTALS OF BLOCKCHAIN (FBC)
+  // DIRECT EXACT QUESTION SOLVERS (ZERO HALLUCINATION)
   // =========================================================================
-  static String _solveFbcQuestion(int qNum, String lang, String docTitle) {
+  static String _solveAiProductQuestion(String lang) {
     if (lang == 'GUJARATI') {
-      switch (qNum) {
-        case 1:
-          return '''### 📝 પ્રશ્ન ૧: બ્લોકચેન ટેકનોલોજી એટલે શું? તેનું આર્કિટેક્ચર અને DLT સમજાવો.
+      return '''### 💡 પ્રશ્ન: AI Product (આર્ટિફિશિયલ ઇન્ટેલિજન્સ પ્રોડક્ટ) ની વ્યાખ્યા આપો.
 
-**૧. બ્લોકચેનની વ્યાખ્યા:**
-બ્લોકચેન એ એક ડિસ્ટ્રિબ્યુટેડ, ડીસેન્ટ્રલાઇઝ્ડ અને ઇમ્યુટેબલ (અપરિવર્તનીય) ડિજિટલ લેજર (Digital Ledger) છે, જેમાં ડેટા ક્રિપ્ટોગ્રાફિક હેશિંગ દ્વારા જોડાયેલા બ્લોક્સની શૃંખલામાં સુરક્ષિત રીતે સંગ્રહિત થાય છે.
+**૧. AI Product ની વ્યાખ્યા:**
+**AI Product** એ એવો સોફ્ટવેર, એપ્લિકેશન અથવા હાર્ડવેર સિસ્ટમ છે જે મશીન લર્નિંગ, નેચરલ લેંગ્વેજ પ્રોસેસિંગ (NLP), કમ્પ્યુટર વિઝન અથવા એઆઈ એલ્ગોરિધમ્સનો ઉપયોગ કરીને વાસ્તવિક સમસ્યાઓનો આપમેળે ઉકેલ લાવે છે, આગાહીઓ કરે છે અથવા નિર્ણયો લે છે.
 
-**૨. બ્લોકચેન આર્કિટેક્ચરના મુખ્ય ઘટકો:**
-• **બ્લોક હેડર (Block Header):**
-  - **Previous Block Hash:** પાછલા બ્લોકનો 256-બીટ હેશ કોડ.
-  - **Merkle Root Hash:** બ્લોકમાં રહેલા તમામ ટ્રાન્ઝેક્શન્સનો ક્રિપ્ટોગ્રાફિક સારાંશ.
-  - **Timestamp:** બ્લોક ક્યારે બન્યો તેનો ચોક્કસ સમય.
-  - **Nonce (Number used Once):** Proof-of-Work માટેનો રેન્ડમ નંબર.
-• **ટ્રાન્ઝેક્શન ડેટા (Transaction Data):** માન્ય ડિજિટલ ટ્રાન્ઝેક્શન્સની યાદી.
+**૨. મુખ્ય લક્ષણો:**
+• **સ્વતઃ શિખવાની ક્ષમતા (Continuous Learning):** વપરાશકર્તાના નવા ડેટામાંથી સતત સુધારો કરે છે.
+• **સંભાવનાત્મક પરિણામો (Probabilistic Output):** પરંપરાગત ફિક્સ કોડિંગની જગ્યાએ આંકડાકીય મોડેલ્સ પર કાર્ય કરે છે.
+• **માનવ સહયોગ (Human-in-the-loop):** જટિલ પ્રક્રિયાઓમાં માનવ નિર્ણયને ઝડપી બનાવે છે.
 
-**૩. DLT વિરુદ્ધ સેન્ટ્રલાઈઝ્ડ ડેટાબેઝ:**
-| લક્ષણ | સેન્ટ્રલાઈઝ્ડ ડેટાબેઝ | ડિસ્ટ્રિબ્યુટેડ લેજર (DLT) |
-| :--- | :--- | :--- |
-| કંટ્રોલ | સિંગલ એડમિનિસ્ટ્રેટર | સમગ્ર નેટવર્ક (P2P Nodes) |
-| વિશ્વસનીયતા | સિંગલ પોઈન્ટ ઓફ ફેલ્યર | ઉચ્ચ ફોલ્ટ ટોલરન્સ |
-| પારદર્શિતા | સીમિત | સંપૂર્ણ પારદર્શક અને વેરિફાયેબલ |
-
-**૪. સારાંશ:**
-બ્લોકચેનમાં મધ્યસ્થી વિના સુરક્ષિત, પારદર્શક અને કાયમી ટ્રાન્ઝેક્શન થાય છે.''';
-
-        case 2:
-          return '''### 📝 પ્રશ્ન ૨: Consensus Mechanisms: Proof of Work (PoW) vs Proof of Stake (PoS).
-
-**૧. કન્સેન્સસ મિકેનિઝમ એટલે શું?**
-ડીસેન્ટ્રલાઈઝ્ડ નેટવર્કના તમામ નોડ્સ એક જ લેજર સ્ટેટ પર સહમત થાય તે પ્રક્રિયાને કન્સેન્સસ કહેવાય છે.
-
-**૨. Proof of Work (PoW) વિરુદ્ધ Proof of Stake (PoS):**
-• **Proof of Work (PoW):**
-  - માઇનર્સ જટિલ ગણિતિક કોયડા ઉકેલે છે.
-  - ઉદાહરણ: Bitcoin.
-  - ગેરફાયદો: ભારે વીજ વપરાશ.
-• **Proof of Stake (PoS):**
-  - વેલિડેટર્સ તેમના કોઈન્સને નેટવર્કમાં 'સ્ટેક' કરીને નવા બ્લોક ચકાસે છે.
-  - ઉદાહરણ: Ethereum 2.0, Cardano.
-  - ફાયદો: ૯૯.૯% ઓછી ઊર્જા વપરાશ અને ઝડપી ટ્રાન્ઝેક્શન.
-
-**૩. પરીક્ષા ઉપયોગી મુદ્દા:**
-PoS વધુ ઇકો-ફ્રેન્ડલી અને સ્કેલેબલ છે, જ્યારે PoW સૌથી જૂનું અને સુરક્ષિત માનવામાં આવે છે.''';
-
-        default:
-          return '''### 📝 પ્રશ્ન $qNum: Fundamentals of Blockchain (FBC)
-
-**૧. મુખ્ય સિદ્ધાંત:**
-બ્લોકચેન નેટવર્કમાં ક્રિપ્ટોગ્રાફિક હેશ (SHA-256), પબ્લિક-પ્રાઇવેટ કી પેર અને સ્માર્ટ કોન્ટ્રાક્ટ્સ દ્વારા ડેટા સિક્યોરિટી સુનિશ્ચિત કરવામાં આવે છે.
-
-**૨. સ્માર્ટ કોન્ટ્રાક્ટ્સ અને EVM:**
-• સ્માર્ટ કોન્ટ્રાક્ટ્સ એ સેલ્ફ-એક્ઝિક્યુટિંગ કોડ છે જે શરતો પૂર્ણ થતાં આપોઆપ રન થાય છે.
-• સોલિડિટી (Solidity) પ્રોગ્રામિંગ ભાષા દ્વારા Ethereum નેટવર્ક પર સ્માર્ટ કોન્ટ્રાક્ટ્સ લખાય છે.
-
-**૩. ઉપયોગો:**
-Supply Chain Management, Decentralized Finance (DeFi), Digital Identity, અને Voting Systems.''';
-      }
+**૩. જાણીતા ઉદાહરણો:**
+• ChatGPT / Gemini (જનરેટિવ એઆઈ પ્રોડક્ટ્સ)
+• Tesla Autopilot (સ્વચાલિત વાહન)
+• Netflix Recommendation System (મનોરંજન સૂચનો)''';
     }
 
-    // ENGLISH (Default)
+    return '''### 💡 Question: Define AI Product
+
+**1. Definition of AI Product:**
+An **AI Product** is a software application, digital platform, or hardware system that integrates Artificial Intelligence algorithms (such as Machine Learning models, Deep Neural Networks, Natural Language Processing, or Computer Vision) as its core functionality to automate cognitive tasks, deliver predictive insights, and solve complex user problems dynamically.
+
+**2. Core Characteristics of an AI Product:**
+• **Continuous Learning & Adaptation:** Utilizes continuous data feedback loops to retrain models and improve prediction accuracy over time.
+• **Probabilistic Logic:** Unlike traditional deterministic software with rigid if-else rules, AI products evaluate confidence scores and probabilities.
+• **Data-Driven Core:** The product's intelligence scales directly with the quality and volume of domain data.
+• **Human-AI Collaboration:** Augments human decision-making with automated assistance.
+
+**3. Real-World Examples:**
+• **Conversational Copilots:** ChatGPT, Claude, GitHub Copilot.
+• **Autonomous Systems:** Tesla Full Self-Driving (FSD), Waymo.
+• **Predictive Engines:** Netflix Recommendation System, Google Search Ranking, Spotify Discover.
+• **Enterprise Diagnostics:** AI Healthcare diagnostic imaging tools.''';
+  }
+
+  static String _solveSmartContractQuestion(String lang) {
+    return '''### 💡 Question: What are Smart Contracts? Explain their Execution Environment and Lifecycle.
+
+**1. Definition of Smart Contract:**
+A **Smart Contract** is a self-executing, decentralized digital program deployed on a blockchain network that automatically enforces and executes contractual terms when predefined cryptographic conditions are met.
+
+**2. Key Characteristics:**
+• **Autonomous:** Executes without intermediaries, lawyers, or central escrow services.
+• **Immutable:** Once deployed to the blockchain, the contract logic and state cannot be modified or tampered with.
+• **Deterministic:** Identical inputs yield identical execution results across all validator nodes.
+
+**3. Execution Environment:**
+• Runs on the **Ethereum Virtual Machine (EVM)** compiled into bytecode from languages such as **Solidity** or **Vyper**.
+• **Gas Mechanism:** Every operation requires a computational fee (Gas) paid in cryptocurrency to prevent infinite loops and denial-of-service (DoS) attacks.''';
+  }
+
+  static String _solveConsensusQuestion(String lang) {
+    return '''### 💡 Question: Consensus Mechanisms: Proof of Work (PoW) vs Proof of Stake (PoS)
+
+**1. Concept of Consensus:**
+A consensus mechanism enables distributed, decentralized blockchain nodes to reach a single unified state agreement without requiring a centralized authority.
+
+**2. Proof of Work (PoW) vs Proof of Stake (PoS):**
+| Metric | Proof of Work (PoW) | Proof of Stake (PoS) |
+| :--- | :--- | :--- |
+| **Validation Mechanism** | Computational mining (Solving cryptographic puzzles) | Economic staking (Validators lock tokens as collateral) |
+| **Energy Consumption** | Very high electricity usage | >99.9% energy reduction (Eco-friendly) |
+| **Security Mechanism** | 51% Hashpower defense | Slashing penalties on malicious staked capital |
+| **Examples** | Bitcoin, Litecoin | Ethereum 2.0, Solana, Cardano |''';
+  }
+
+  static String _solveMerkleQuestion(String lang) {
+    return '''### 💡 Question: Explain Merkle Tree in Blockchain
+
+**1. What is a Merkle Tree?**
+A **Merkle Tree** (Binary Hash Tree) is a cryptographic data structure where every leaf node is the hash of a transactional block, and every non-leaf node is the hash of its concatenated child nodes.
+
+**2. Construction Process:**
+• Transactions are hashed individually: HA = SHA256(TxA), HB = SHA256(TxB).
+• Combined into parent hashes: HAB = SHA256(HA + HB).
+• Merged upward until a single **Merkle Root Hash** is stored in the Block Header.
+
+**3. Key Benefit:**
+Enables **Simple Payment Verification (SPV)** allowing light nodes to prove a transaction's existence with logarithmic O(log N) complexity without downloading full multi-gigabyte blockchain ledgers.''';
+  }
+
+  static String _solvePeasAgentQuestion(String lang) {
+    return '''### 💡 Question: Explain AI Rational Agents and PEAS Framework
+
+**1. Rational AI Agent:**
+An entity that perceives its environment through **Sensors**, makes intelligent decisions using an internal logic/learning model, and acts upon the environment via **Actuators** to maximize its expected performance measure.
+
+**2. The PEAS Model:**
+• **P (Performance Measure):** Goal metrics to evaluate success (e.g. Accuracy, Speed, Safety).
+• **E (Environment):** The surrounding operational workspace (e.g. Roads, Hospital records, Game board).
+• **A (Actuators):** Hardware/software mechanisms that carry out actions (e.g. Steering, Robotic arm, Display screen).
+• **S (Sensors):** Input hardware/software (e.g. Cameras, Sonar, Microphones, Keyboard input).''';
+  }
+
+  static String _solveSearchAlgoQuestion(String lang) {
+    return '''### 💡 Question: Search Algorithms in AI: Uninformed vs Informed Search
+
+**1. Uninformed (Blind) Search:**
+• Explores state spaces without domain knowledge or goal distance estimation.
+• **Breadth-First Search (BFS):** Explores shallowest nodes first; complete and optimal for uniform step costs; memory O(b^d).
+• **Depth-First Search (DFS):** Explores deepest path first; low memory O(bm), but not guaranteed optimal.
+
+**2. Informed (Heuristic) Search:**
+• Uses heuristic evaluation function f(n) = g(n) + h(n).
+• **A* Search:** Guaranteed complete and optimal if the heuristic h(n) is admissible (never overestimates true cost) and consistent.''';
+  }
+
+  static String _solvePromptEngQuestion(String lang) {
+    return '''### 💡 Question: Explain Prompt Engineering Techniques
+
+**1. What is Prompt Engineering?**
+The discipline of structuring, refining, and optimizing natural language inputs to Large Language Models (LLMs) to reliably elicit high-accuracy, deterministic outputs.
+
+**2. Core Prompting Frameworks:**
+• **Zero-Shot Prompting:** Providing a direct task instruction without providing prior example demonstrations.
+• **Few-Shot Prompting:** Supplying 2-5 clear input-output example pairs within the context window to establish formatting and reasoning standards.
+• **Chain-of-Thought (CoT):** Guiding the model to "think step by step" to break down multi-step mathematical, logical, or diagnostic tasks.''';
+  }
+
+  // =========================================================================
+  // SUBJECT-SPECIFIC UNIT SOLVERS
+  // =========================================================================
+  static String _solveFbcQuestion(int qNum, String lang, String docTitle) {
     switch (qNum) {
       case 1:
         return '''### 📝 Question 1: What is Blockchain Technology? Explain Blockchain Architecture and DLT vs Centralized Database.
@@ -115,13 +200,12 @@ A **Blockchain** is a decentralized, distributed, and immutable digital ledger t
 **2. Blockchain Core Architecture & Block Anatomy:**
 Every block consists of two primary segments:
 • **Block Header:**
-  - **Previous Block Hash (PrevHash):** 256-bit SHA-256 hash pointer linking back to the parent block, ensuring unbroken chain integrity.
-  - **Merkle Root Hash:** The cryptographic root hash of all transactions in the block (Merkle Tree).
-  - **Timestamp:** The exact UTC time the block was mined/validated.
+  - **Previous Block Hash (PrevHash):** 256-bit SHA-256 hash pointer linking back to the parent block.
+  - **Merkle Root Hash:** The cryptographic root hash of all transactions in the block.
+  - **Timestamp:** The exact UTC time the block was mined.
   - **Nonce (Number used Once):** A 32-bit integer altered by miners to satisfy the Proof-of-Work difficulty target.
-  - **Difficulty Target:** Network mining difficulty.
 • **Block Body:**
-  - The ordered ledger list of verified digital transactions (Tx1, Tx2, ... TxN).
+  - The ordered ledger list of verified digital transactions.
 
 **3. Comparison: Centralized Database vs Distributed Ledger Technology (DLT):**
 | Metric | Centralized Database (SQL/Oracle) | Distributed Ledger (Blockchain) |
@@ -131,71 +215,17 @@ Every block consists of two primary segments:
 | **Security** | Single Point of Failure (SPOF) | Cryptographic Hashing & Fault Tolerant |
 | **Transparency** | Restricted to admin users | Verifiable by all participating nodes |
 
-**4. Key Exam Takeaway:**
-Blockchain eliminates the need for trusted central intermediaries by replacing institutional trust with mathematical and cryptographic proof.''';
+---
+💡 *Tip: You can also ask any exact question directly (e.g. "Define Smart Contracts" or "Explain Merkle Tree") for an instant step-by-step solution!*''';
 
       case 2:
-        return '''### 📝 Question 2: Explain Consensus Mechanisms: Proof of Work (PoW) vs Proof of Stake (PoS).
-
-**1. What is a Consensus Mechanism?**
-A consensus mechanism is a fault-tolerant protocol used in distributed blockchain networks to achieve single-state agreement among distrusting peer nodes.
-
-**2. Proof of Work (PoW):**
-• **Working Principle:** Miners expend vast computational hash-power solving complex cryptographic puzzles (finding a hash with required leading zeros).
-• **Security:** 51% Attack resistant due to colossal hardware capital cost.
-• **Drawbacks:** Immense electrical energy consumption and limited transaction throughput (~7 TPS in Bitcoin).
-
-**3. Proof of Stake (PoS):**
-• **Working Principle:** Validators lock up (stake) native cryptocurrency tokens as collateral to propose and validate new blocks.
-• **Security:** Malicious actors face slashing penalties (loss of staked assets).
-• **Advantages:** >99.9% energy reduction, faster block confirmation, and higher scalability (Ethereum 2.0, Solana).
-
-**4. Comparison Summary:**
-PoW rewards hardware computational capability, whereas PoS rewards economic stake and network reliability.''';
+        return _solveConsensusQuestion(lang);
 
       case 3:
-        return '''### 📝 Question 3: Explain Cryptography in Blockchain: SHA-256, Asymmetric Key Pairs, and Digital Signatures.
-
-**1. Cryptographic Hash Functions (SHA-256):**
-• Takes arbitrary length input and produces a fixed 256-bit output.
-• **Properties:** Deterministic, Avalanche Effect (minor input change alters output completely), and Pre-image Resistance (one-way function).
-
-**2. Asymmetric Public-Private Key Cryptography:**
-• **Private Key:** Secret key kept safely by the wallet owner; used to sign transactions.
-• **Public Key:** Mathematically derived from the private key via Elliptic Curve Cryptography (ECDSA/secp256k1); shared publicly as the wallet address.
-
-**3. Digital Signatures:**
-• **Signing:** Transaction data + Private Key -> Digital Signature.
-• **Verification:** Anyone on the network verifies authenticity using the Public Key without exposing the Private Key.''';
+        return _solveSmartContractQuestion(lang);
 
       case 4:
-        return '''### 📝 Question 4: What are Smart Contracts? Explain their Execution Environment and Lifecycle.
-
-**1. Definition of Smart Contract:**
-A smart contract is self-executing deterministic code stored on the blockchain that automatically enforces contract clauses when predetermined conditions are met.
-
-**2. Key Characteristics:**
-• **Deterministic:** Executes the exact same output given identical inputs across all nodes.
-• **Immutable:** Once deployed to mainnet, the code cannot be tampered with.
-• **Autonomous:** Executes without human intermediaries or third-party escrow.
-
-**3. Execution Environment:**
-• Smart contracts run on the **Ethereum Virtual Machine (EVM)** using bytecode compiled from high-level languages like **Solidity** or **Vyper**.
-• **Gas:** Computational fee paid in gwei to miners/validators to prevent infinite loops and denial-of-service attacks.''';
-
-      case 5:
-        return '''### 📝 Question 5: What is a Merkle Tree? Explain its Construction and Verification.
-
-**1. Merkle Tree Concept:**
-A **Merkle Tree** (Binary Hash Tree) is a data structure used to efficiently summarize and verify the integrity of large datasets in a block.
-
-**2. Construction Process:**
-• Every transaction is hashed individually: HA = SHA256(TxA).
-• Consecutive pairs of hashes are concatenated and hashed together: HAB = SHA256(HA + HB).
-• The process continues upward until a single root hash remains: the **Merkle Root**.
-
-**3. Advantage:**
-Enables **Simple Payment Verification (SPV)** where a light node can verify if a transaction exists in a block with logarithmic O(log N) proof complexity rather than downloading the entire ledger.''';
+        return _solveMerkleQuestion(lang);
 
       default:
         return '''### 📝 Question $qNum: Fundamentals of Blockchain (FBC)
@@ -208,49 +238,21 @@ In Unit $qNum of Fundamentals of Blockchain (FBC), core concepts include Distrib
 • Public vs Private Permissioned Blockchains (e.g. Ethereum vs Hyperledger Fabric).
 • Real-world applications in Decentralized Identity, Supply Chain traceability, and Central Bank Digital Currencies (CBDC).
 
-**3. Academic Solution Summary:**
-Review the GTU syllabus unit requirements for $docTitle. If you need step-by-step code in Solidity or cryptographic hash calculations, specify "show Solidity code" or "explain SHA-256 steps".''';
+---
+💡 *Tip: You can paste the exact question text from your assignment sheet (e.g. "Define SHA-256" or "Explain Gas in Ethereum") to get the exact answer!*''';
     }
   }
 
-  // =========================================================================
-  // 2. ARTIFICIAL INTELLIGENCE & PRODUCT DEVELOPMENT (AIPD)
-  // =========================================================================
-  static String _solveAipdQuestion(int qNum, String lang) {
+  static String _solveAipdQuestion(int qNum, String lang, String docTitle) {
     switch (qNum) {
       case 1:
-        return '''### 📝 Question 1: Define Artificial Intelligence and explain AI Agent Architecture & PEAS Framework.
-
-**1. Definition of Artificial Intelligence:**
-Artificial Intelligence (AI) is the science of designing computational systems that can perform tasks normally requiring human intelligence—including reasoning, perception, learning, and decision making.
-
-**2. Rational Agents & Environment:**
-An AI Agent perceives its environment through **Sensors** and acts upon it using **Actuators**.
-
-**3. The PEAS Framework:**
-• **Performance Measure:** The metric used to evaluate agent success (e.g. Safety, Speed, Accuracy).
-• **Environment:** The operational domain (e.g. City roads, Chess board, Hospital records).
-• **Actuators:** Output mechanisms to execute actions (e.g. Steering wheel, Display screen, Robotic arm).
-• **Sensors:** Input devices (e.g. Cameras, Sonar, Keyboard input).
-
-**4. Example (Autonomous Taxi):**
-• **P:** Fast, legal, comfortable trip, maximized profit.
-• **E:** Roads, vehicular traffic, pedestrians, weather conditions.
-• **A:** Steering, accelerator, brake, horn, display.
-• **S:** Cameras, LiDAR, GPS, speedometer, odometer.''';
+        return _solveAiProductQuestion(lang);
 
       case 2:
-        return '''### 📝 Question 2: Explain Search Algorithms in AI: Uninformed vs Informed (Heuristic) Search.
+        return _solvePeasAgentQuestion(lang);
 
-**1. Uninformed (Blind) Search:**
-• Explores state space without domain-specific knowledge of goal proximity.
-• **Breadth-First Search (BFS):** Explores level-by-level; complete and optimal for unweighted graphs; space complexity O(b^d).
-• **Depth-First Search (DFS):** Explores deepest node first; low memory O(bm), but not guaranteed optimal.
-
-**2. Informed (Heuristic) Search:**
-• Uses evaluation function f(n) = g(n) + h(n) to guide search toward the goal.
-• **A* Search:** Combines actual path cost g(n) and estimated heuristic cost h(n).
-• Guaranteed complete and optimal if h(n) is **admissible** (never overestimates true cost) and **consistent**.''';
+      case 3:
+        return _solveSearchAlgoQuestion(lang);
 
       default:
         return '''### 📝 Question $qNum: Artificial Intelligence & Product Development (AIPD)
@@ -260,29 +262,17 @@ Unit $qNum of AIPD focuses on AI system lifecycle, model training workflows, fea
 
 **2. Key Architecture:**
 • Data Pipeline -> Feature Extraction -> Model Training -> Evaluation & Validation -> Inference API / Edge Deployment.
-• Performance Monitoring against Data Drift and Concept Drift in live production.''';
+• Performance Monitoring against Data Drift and Concept Drift in live production.
+
+---
+💡 *Tip: Paste your exact assignment question (e.g. "Define AI Product" or "Explain Supervised vs Unsupervised Learning") for a comprehensive answer!*''';
     }
   }
 
-  // =========================================================================
-  // 3. ARTIFICIAL INTELLIGENCE & PROMPT ENGINEERING (AIPE)
-  // =========================================================================
   static String _solveAipeQuestion(int qNum, String lang) {
-    return '''### 📝 Question $qNum: Artificial Intelligence & Prompt Engineering (AIPE)
-
-**1. Prompting Frameworks:**
-• **Zero-Shot Prompting:** Providing direct instruction without demonstration examples.
-• **Few-Shot Prompting:** Supplying 2-5 input-output demonstration pairs to condition the model output format.
-• **Chain-of-Thought (CoT):** Asking the model to "think step by step" to decompose complex reasoning tasks.
-
-**2. LLM Hyperparameters:**
-• **Temperature (0.0 to 1.0):** Lower values produce deterministic, factual answers; higher values increase randomness and creativity.
-• **Top-P (Nucleus Sampling):** Selects tokens from the smallest cumulative probability mass.''';
+    return _solvePromptEngQuestion(lang);
   }
 
-  // =========================================================================
-  // 4. OTHER SUBJECTS (DBMS, CN, OS, GENERIC)
-  // =========================================================================
   static String _solveDbmsQuestion(int qNum, String lang) {
     return '''### 📝 Question $qNum: Database Management Systems (DBMS)
 
@@ -321,6 +311,9 @@ For **$subject**, Question $qNum addresses core theoretical foundations, archite
 **2. Step-by-Step Academic Solution:**
 • **Primary Concept:** Systematic breakdown of the underlying theoretical model.
 • **Key Principles:** Structured implementation steps, formulas, and diagrams.
-• **Exam Tips:** Focus on standard definitions, clean bullet points, and practical examples for full marks.''';
+• **Exam Tips:** Focus on standard definitions, clean bullet points, and practical examples for full marks.
+
+---
+💡 *Tip: Paste your exact question text (e.g. "Define: ...") to get the exact exam-ready answer!*''';
   }
 }

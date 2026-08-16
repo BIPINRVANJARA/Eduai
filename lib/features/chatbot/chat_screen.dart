@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -330,16 +331,94 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                           ),
                         ],
                       ),
-                      child: Text(
-                        msg.text,
-                        style: TextStyle(
-                          color: isUser ? AppColors.background : AppColors.textPrimary,
-                          fontSize: 14,
-                          height: 1.45,
-                          fontWeight: isUser ? FontWeight.w700 : FontWeight.w400,
-                          letterSpacing: -0.1,
-                        ),
-                      ),
+                      child: isUser
+                          ? Text(
+                              msg.text,
+                              style: const TextStyle(
+                                color: AppColors.background,
+                                fontSize: 14,
+                                height: 1.45,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: -0.1,
+                              ),
+                            )
+                          : MarkdownBody(
+                              data: msg.text,
+                              selectable: true,
+                              styleSheet: MarkdownStyleSheet(
+                                p: const TextStyle(
+                                  color: AppColors.textPrimary,
+                                  fontSize: 14,
+                                  height: 1.55,
+                                  letterSpacing: -0.1,
+                                ),
+                                strong: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                                em: const TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                                h1: const TextStyle(
+                                  color: AppColors.primary,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  height: 1.4,
+                                ),
+                                h2: const TextStyle(
+                                  color: AppColors.primary,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  height: 1.4,
+                                ),
+                                h3: const TextStyle(
+                                  color: AppColors.primary,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  height: 1.4,
+                                ),
+                                listBullet: const TextStyle(
+                                  color: AppColors.primary,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                tableHead: const TextStyle(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                ),
+                                tableBody: const TextStyle(
+                                  color: AppColors.textPrimary,
+                                  fontSize: 12,
+                                ),
+                                tableBorder: TableBorder.all(
+                                  color: AppColors.cardBorder,
+                                  width: 1,
+                                ),
+                                tableHeadAlign: TextAlign.left,
+                                tableCellsPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                code: const TextStyle(
+                                  color: AppColors.primary,
+                                  backgroundColor: AppColors.surfaceLight,
+                                  fontFamily: 'monospace',
+                                  fontSize: 12,
+                                ),
+                                codeblockDecoration: BoxDecoration(
+                                  color: const Color(0xFF0D131F),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: AppColors.cardBorder),
+                                ),
+                                horizontalRuleDecoration: BoxDecoration(
+                                  border: Border(
+                                    top: BorderSide(
+                                      color: AppColors.cardBorder.withOpacity(0.6),
+                                      width: 1,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
                     ),
                     if (!isUser) ...[
                       const SizedBox(height: 4),
