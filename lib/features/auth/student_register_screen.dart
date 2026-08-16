@@ -49,12 +49,13 @@ class _StudentRegisterScreenState extends ConsumerState<StudentRegisterScreen> {
 
   bool _isLoading = false;
 
-  final _departments = [
+  List<String> _departments = [
     'Information Technology',
-    'Computer Science & Engineering',
+    'Computer Engineering',
     'Electronics & Communication',
     'Mechanical Engineering',
     'Civil Engineering',
+    'General / Applied Sciences',
   ];
   final _semesters = ['1', '2', '3', '4', '5', '6', '7', '8'];
   final _divisions = ['A', 'B', 'C', 'D'];
@@ -63,6 +64,7 @@ class _StudentRegisterScreenState extends ConsumerState<StudentRegisterScreen> {
   void initState() {
     super.initState();
     _fetchLiveInstitutions();
+    _fetchLiveDepartments(_institutionId);
   }
 
   Future<void> _fetchLiveInstitutions() async {
@@ -76,13 +78,43 @@ class _StudentRegisterScreenState extends ConsumerState<StudentRegisterScreen> {
         setState(() {
           _availableInstitutions = List<Map<String, dynamic>>.from(res);
           if (!_availableInstitutions.any((i) => i['id'] == _institutionId)) {
-            _institutionId = _availableInstitutions.first['id']?.toString() ?? 'gph_624';
+            _institutionId = _availableInstitutions.first['id']?.toString() ?? '6c6e9b83-cabf-4b13-855b-97d2e1461177';
             _institutionName = _availableInstitutions.first['name']?.toString() ?? 'College';
           }
         });
+        _fetchLiveDepartments(_institutionId);
       }
     } catch (e) {
       debugPrint('Error fetching live institutions: $e');
+    }
+  }
+
+  Future<void> _fetchLiveDepartments(String instId) async {
+    try {
+      final res = await Supabase.instance.client
+          .from('departments')
+          .select('name')
+          .eq('institution_id', instId)
+          .eq('status', 'active')
+          .order('name', ascending: true);
+
+      if (res != null && (res as List).isNotEmpty) {
+        final names = (res as List)
+            .map((d) => d['name']?.toString().trim() ?? '')
+            .where((n) => n.isNotEmpty)
+            .toList();
+
+        if (names.isNotEmpty) {
+          setState(() {
+            _departments = names;
+            if (_department != null && !_departments.contains(_department)) {
+              _department = null;
+            }
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error fetching live departments: $e');
     }
   }
 
@@ -479,6 +511,7 @@ class _StudentRegisterScreenState extends ConsumerState<StudentRegisterScreen> {
                         final match = _availableInstitutions.firstWhere((i) => i['id'] == val, orElse: () => _availableInstitutions.first);
                         _institutionName = match['name'] ?? '';
                       });
+                      _fetchLiveDepartments(val);
                     }
                   },
                 ),
