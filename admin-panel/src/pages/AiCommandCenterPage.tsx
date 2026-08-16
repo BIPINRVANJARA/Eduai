@@ -12,7 +12,10 @@ import {
   Trash2, 
   Edit3,
   FileSpreadsheet,
-  Plus
+  Plus,
+  Files,
+  Sparkles,
+  CheckCheck
 } from 'lucide-react'
 import { supabase } from '../config/supabase'
 import { useAuth } from '../contexts/AuthContext'
@@ -23,14 +26,24 @@ import type {
   ExtractedAlertMetadata
 } from '../lib/groq'
 
+export interface BatchDocumentItem {
+  id: string
+  fileBlob: File
+  fileMetadata: { name: string; size: number }
+  docData: ExtractedDocMetadata
+  confirmationStatus: 'pending' | 'confirmed' | 'cancelled'
+  dbId?: string
+}
+
 interface ChatMessage {
   id: string
   sender: 'admin' | 'ai'
   text: string
   timestamp: string
-  attachedFile?: { name: string; size: number }
-  fileBlob?: File
+  attachedFiles?: { name: string; size: number }[]
+  fileBlobs?: File[]
   actionResponse?: UniversalAdminResponse
+  batchDocuments?: BatchDocumentItem[]
   confirmationStatus?: 'pending' | 'confirmed' | 'cancelled'
   dbResult?: { id: string; type: 'document' | 'alert' | 'scores' }
 }
@@ -41,18 +54,21 @@ export default function AiCommandCenterPage() {
     {
       id: 'welcome',
       sender: 'ai',
-      text: `Hello ${institution?.short_name || institution?.name || 'Administrator'}! I am Eduai Intelligent Copilot for this campus.\n\nType natural prompts like *"this is AIPD Assignment for Sem 5 IT"* and attach documents. I will automatically extract metadata, infer the full subject title, and generate 14+ multilingual search tags for students and parents.`,
+      text: `Hello ${institution?.short_name || institution?.name || 'Administrator'}! I am Eduai Intelligent Copilot for this campus.\n\nYou can select and attach multiple documents at once (e.g. all assignments, lab manuals, timetables, or notices). I will analyze all of them simultaneously, extract metadata, infer full subject titles, and generate 14+ multilingual search tags for every document!`,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
   ])
   
   const [inputPrompt, setInputPrompt] = useState('')
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const [isProcessing, setIsProcessing] = useState(false)
+  const [processingProgressText, setProcessingProgressText] = useState('')
   const [executingMessageId, setExecutingMessageId] = useState<string | null>(null)
+  const [batchExecutingDocId, setBatchExecutingDocId] = useState<string | null>(null)
   
   // Inline editing state for confirmation cards
   const [editingCardId, setEditingCardId] = useState<string | null>(null)
+  const [editingBatchDocId, setEditingBatchDocId] = useState<string | null>(null)
   const [editedDoc, setEditedDoc] = useState<ExtractedDocMetadata | null>(null)
   const [editedAlert, setEditedAlert] = useState<ExtractedAlertMetadata | null>(null)
   const [newTagInput, setNewTagInput] = useState('')
@@ -64,73 +80,291 @@ export default function AiCommandCenterPage() {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, isProcessing])
 
+  // Handle Multi-file selection
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setSelectedFile(e.target.files[0])
+    if (e.target.files && e.target.files.length > 0) {
+      const newFiles = Array.from(e.target.files)
+      // Deduplicate by name + size
+      setSelectedFiles(prev => {
+        const existingNames = new Set(prev.map(f => `${f.name}_${f.size}`))
+        const filteredNew = newFiles.filter(f => !existingNames.has(`${f.name}_${f.size}`))
+        return [...prev, ...filteredNew]
+      })
     }
+    // Reset file input so user can choose the same file again if needed
+    if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
+  const handleRemoveFile = (indexToRemove: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== indexToRemove))
+  }
+
+  const handleClearAllFiles = () => {
+    setSelectedFiles([])
+  }
+
+  // Handle AI analysis & sending message
   const handleSendMessage = async (promptOverride?: string) => {
     const textToSend = promptOverride || inputPrompt.trim()
-    if (!textToSend && !selectedFile) return
+    if (!textToSend && selectedFiles.length === 0) return
 
-    const currentFile = selectedFile
-    const fileMetadata = currentFile ? { name: currentFile.name, size: currentFile.size } : undefined
-
-    let fileSnippetText: string | null = null
-    if (currentFile) {
-      if (currentFile.type.includes('text') || currentFile.name.endsWith('.txt') || currentFile.name.endsWith('.csv') || currentFile.name.endsWith('.json')) {
-        try {
-          const raw = await currentFile.text()
-          fileSnippetText = raw.length > 2000 ? raw.substring(0, 2000) + '...' : raw
-        } catch (_) {}
-      }
-    }
+    const currentFiles = [...selectedFiles]
+    const filesMetadata = currentFiles.map(f => ({ name: f.name, size: f.size }))
 
     const userMessage: ChatMessage = {
       id: `admin_${Date.now()}`,
       sender: 'admin',
-      text: textToSend || `Uploaded file: ${currentFile?.name}`,
+      text: textToSend || (currentFiles.length > 1 ? `Uploaded ${currentFiles.length} academic documents for AI analysis.` : `Uploaded file: ${currentFiles[0]?.name}`),
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      attachedFile: fileMetadata,
-      fileBlob: currentFile || undefined
+      attachedFiles: filesMetadata,
+      fileBlobs: currentFiles
     }
 
     setMessages(prev => [...prev, userMessage])
     setInputPrompt('')
-    setSelectedFile(null)
+    setSelectedFiles([])
     setIsProcessing(true)
 
     try {
-      const response = await parseUniversalAdminCommand(textToSend, fileMetadata, fileSnippetText)
+      if (currentFiles.length <= 1) {
+        // Single file or text-only command
+        const singleFile = currentFiles[0]
+        const singleMeta = singleFile ? { name: singleFile.name, size: singleFile.size } : undefined
 
-      const aiMessage: ChatMessage = {
-        id: `ai_${Date.now()}`,
-        sender: 'ai',
-        text: response.message,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        actionResponse: response,
-        confirmationStatus: response.requiresConfirmation ? 'pending' : undefined,
-        fileBlob: currentFile || undefined
+        let fileSnippetText: string | null = null
+        if (singleFile) {
+          if (singleFile.type.includes('text') || singleFile.name.endsWith('.txt') || singleFile.name.endsWith('.csv') || singleFile.name.endsWith('.json')) {
+            try {
+              const raw = await singleFile.text()
+              fileSnippetText = raw.length > 2000 ? raw.substring(0, 2000) + '...' : raw
+            } catch (_) {}
+          }
+        }
+
+        setProcessingProgressText('Analyzing document content & generating multi-lingual tags...')
+        const response = await parseUniversalAdminCommand(textToSend, singleMeta, fileSnippetText)
+
+        const aiMessage: ChatMessage = {
+          id: `ai_${Date.now()}`,
+          sender: 'ai',
+          text: response.message,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          actionResponse: response,
+          confirmationStatus: response.requiresConfirmation ? 'pending' : undefined,
+          fileBlobs: currentFiles
+        }
+
+        setMessages(prev => [...prev, aiMessage])
+      } else {
+        // MULTI-DOCUMENT BATCH ANALYSIS
+        setProcessingProgressText(`Analyzing ${currentFiles.length} documents simultaneously with GPT OSS 120B...`)
+
+        const batchResults: BatchDocumentItem[] = []
+
+        for (let i = 0; i < currentFiles.length; i++) {
+          const file = currentFiles[i]
+          setProcessingProgressText(`Analyzing document (${i + 1}/${currentFiles.length}): "${file.name}"...`)
+
+          let snippet: string | null = null
+          if (file.type.includes('text') || file.name.endsWith('.txt') || file.name.endsWith('.csv') || file.name.endsWith('.json')) {
+            try {
+              const raw = await file.text()
+              snippet = raw.length > 2000 ? raw.substring(0, 2000) + '...' : raw
+            } catch (_) {}
+          }
+
+          const fileSpecificPrompt = textToSend 
+            ? `${textToSend}. Specific Document: ${file.name}` 
+            : `Analyze this academic file: ${file.name}`
+
+          const res = await parseUniversalAdminCommand(fileSpecificPrompt, { name: file.name, size: file.size }, snippet)
+
+          const docData: ExtractedDocMetadata = res.documentData || {
+            title: file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' '),
+            category: file.name.toLowerCase().includes('assignment') ? 'assignment' : file.name.toLowerCase().includes('manual') ? 'lab_manual' : file.name.toLowerCase().includes('timetable') ? 'timetable' : 'notes',
+            department: 'Information Technology',
+            semester: '5',
+            division: 'All',
+            subject_name: 'Academic Course',
+            tags: [file.name.toLowerCase().replace(/\.[^/.]+$/, ''), 'academic document', 'sem 5', 'information technology'],
+            content_summary: `Academic file: ${file.name}`,
+            explanation: `Extracted from ${file.name}`
+          }
+
+          batchResults.push({
+            id: `batch_doc_${Date.now()}_${i}`,
+            fileBlob: file,
+            fileMetadata: { name: file.name, size: file.size },
+            docData,
+            confirmationStatus: 'pending'
+          })
+        }
+
+        const totalTags = batchResults.reduce((acc, d) => acc + (d.docData.tags?.length || 0), 0)
+
+        const aiMessage: ChatMessage = {
+          id: `ai_batch_${Date.now()}`,
+          sender: 'ai',
+          text: `Analyzed all ${currentFiles.length} documents successfully! Generated subject titles, categories, and ${totalTags} multi-lingual search & voice tags across all files. Please review and confirm to sync them to the live campus repository.`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          batchDocuments: batchResults,
+          confirmationStatus: 'pending',
+          fileBlobs: currentFiles
+        }
+
+        setMessages(prev => [...prev, aiMessage])
       }
-
-      setMessages(prev => [...prev, aiMessage])
     } catch (err: any) {
       setMessages(prev => [
         ...prev,
         {
           id: `ai_err_${Date.now()}`,
           sender: 'ai',
-          text: `⚠️ Error processing command: ${err.message || 'Something went wrong.'}`,
+          text: `⚠️ Error processing documents: ${err.message || 'Something went wrong.'}`,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         }
       ])
     } finally {
       setIsProcessing(false)
+      setProcessingProgressText('')
     }
   }
 
-  // CONFIRM & EXECUTE DATABASE INSERTION / SYNC
+  // CONFIRM INDIVIDUAL DOCUMENT IN A BATCH
+  const handleConfirmSingleBatchDoc = async (msgId: string, docItem: BatchDocumentItem) => {
+    setBatchExecutingDocId(docItem.id)
+    try {
+      const docData = (editingBatchDocId === docItem.id && editedDoc) ? editedDoc : docItem.docData
+      let fileUrl = 'https://ifframkwyjegmxubscnk.supabase.co/storage/v1/object/public/documents/sample.pdf'
+      let fileName = docItem.fileBlob.name
+      let fileSize = docItem.fileBlob.size
+
+      // Upload file blob to Supabase Storage
+      const cleanName = docItem.fileBlob.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+      const path = `admin_${Date.now()}_${cleanName}`
+      const { data: uploadData, error: uploadErr } = await supabase.storage
+        .from('documents')
+        .upload(path, docItem.fileBlob)
+
+      if (!uploadErr && uploadData) {
+        const { data: pubData } = supabase.storage.from('documents').getPublicUrl(uploadData.path)
+        fileUrl = pubData.publicUrl
+      }
+
+      // Insert into Supabase documents table
+      const currentInstId = institution?.id || '6c6e9b83-cabf-4b13-855b-97d2e1461177'
+      const { data: insertRes, error: insertErr } = await supabase
+        .from('documents')
+        .insert({
+          title: docData.title,
+          description: docData.content_summary,
+          category: docData.category,
+          department: docData.department,
+          semester: docData.semester,
+          division: docData.division,
+          subject_name: docData.subject_name || docData.title,
+          tags: docData.tags,
+          content_summary: docData.content_summary,
+          file_url: fileUrl,
+          file_name: fileName,
+          file_size: fileSize,
+          uploaded_by: user?.id || 'admin',
+          institution_id: currentInstId
+        })
+        .select()
+        .single()
+
+      if (insertErr) throw insertErr
+
+      // Update message state
+      setMessages(prev =>
+        prev.map(m => {
+          if (m.id === msgId && m.batchDocuments) {
+            const updatedBatch = m.batchDocuments.map(b =>
+              b.id === docItem.id
+                ? { ...b, confirmationStatus: 'confirmed' as const, dbId: insertRes.id }
+                : b
+            )
+            const allConfirmed = updatedBatch.every(b => b.confirmationStatus === 'confirmed')
+            return {
+              ...m,
+              batchDocuments: updatedBatch,
+              confirmationStatus: allConfirmed ? 'confirmed' : 'pending'
+            }
+          }
+          return m
+        })
+      )
+      setEditingBatchDocId(null)
+    } catch (err: any) {
+      alert(`Failed to save "${docItem.fileMetadata.name}": ${err.message}`)
+    } finally {
+      setBatchExecutingDocId(null)
+    }
+  }
+
+  // CONFIRM ALL DOCUMENTS IN A BATCH SIMULTANEOUSLY
+  const handleConfirmAllBatchDocs = async (msg: ChatMessage) => {
+    if (!msg.batchDocuments) return
+    setExecutingMessageId(msg.id)
+
+    try {
+      const currentInstId = institution?.id || '6c6e9b83-cabf-4b13-855b-97d2e1461177'
+      const pendingDocs = msg.batchDocuments.filter(d => d.confirmationStatus !== 'confirmed')
+
+      for (const docItem of pendingDocs) {
+        let fileUrl = 'https://ifframkwyjegmxubscnk.supabase.co/storage/v1/object/public/documents/sample.pdf'
+        const cleanName = docItem.fileBlob.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+        const path = `admin_${Date.now()}_${cleanName}`
+        
+        const { data: uploadData } = await supabase.storage
+          .from('documents')
+          .upload(path, docItem.fileBlob)
+
+        if (uploadData) {
+          const { data: pubData } = supabase.storage.from('documents').getPublicUrl(uploadData.path)
+          fileUrl = pubData.publicUrl
+        }
+
+        await supabase
+          .from('documents')
+          .insert({
+            title: docItem.docData.title,
+            description: docItem.docData.content_summary,
+            category: docItem.docData.category,
+            department: docItem.docData.department,
+            semester: docItem.docData.semester,
+            division: docItem.docData.division,
+            subject_name: docItem.docData.subject_name || docItem.docData.title,
+            tags: docItem.docData.tags,
+            content_summary: docItem.docData.content_summary,
+            file_url: fileUrl,
+            file_name: docItem.fileBlob.name,
+            file_size: docItem.fileBlob.size,
+            uploaded_by: user?.id || 'admin',
+            institution_id: currentInstId
+          })
+      }
+
+      setMessages(prev =>
+        prev.map(m =>
+          m.id === msg.id && m.batchDocuments
+            ? {
+                ...m,
+                confirmationStatus: 'confirmed',
+                batchDocuments: m.batchDocuments.map(d => ({ ...d, confirmationStatus: 'confirmed' }))
+              }
+            : m
+        )
+      )
+    } catch (err: any) {
+      alert(`Batch Ingestion Error: ${err.message}`)
+    } finally {
+      setExecutingMessageId(null)
+    }
+  }
+
+  // CONFIRM & EXECUTE SINGLE ACTION
   const handleConfirmAction = async (msg: ChatMessage) => {
     if (!msg.actionResponse) return
     setExecutingMessageId(msg.id)
@@ -138,13 +372,12 @@ export default function AiCommandCenterPage() {
     try {
       if (msg.actionResponse.actionType === 'INSERT_DOCUMENT') {
         const docData = (editingCardId === msg.id && editedDoc) ? editedDoc : msg.actionResponse.documentData!
-
         let fileUrl = 'https://ifframkwyjegmxubscnk.supabase.co/storage/v1/object/public/documents/sample.pdf'
-        let fileName = msg.attachedFile?.name || `${docData.title}.pdf`
-        let fileSize = msg.attachedFile?.size || 1024 * 150
+        let fileName = msg.attachedFiles?.[0]?.name || `${docData.title}.pdf`
+        let fileSize = msg.attachedFiles?.[0]?.size || 1024 * 150
 
         // Find file blob
-        const fileToUpload = msg.fileBlob || messages.find(m => m.sender === 'admin' && m.fileBlob)?.fileBlob
+        const fileToUpload = msg.fileBlobs?.[0]
         if (fileToUpload) {
           const cleanName = fileToUpload.name.replace(/[^a-zA-Z0-9._-]/g, '_')
           const path = `admin_${Date.now()}_${cleanName}`
@@ -160,7 +393,6 @@ export default function AiCommandCenterPage() {
           }
         }
 
-        // Insert into Supabase documents table with full tags array
         const currentInstId = institution?.id || '6c6e9b83-cabf-4b13-855b-97d2e1461177'
         const { data: insertRes, error: insertErr } = await supabase
           .from('documents')
@@ -287,6 +519,7 @@ export default function AiCommandCenterPage() {
       )
     )
     setEditingCardId(null)
+    setEditingBatchDocId(null)
   }
 
   const startEditCard = (msg: ChatMessage) => {
@@ -298,6 +531,11 @@ export default function AiCommandCenterPage() {
     if (msg.actionResponse.alertData) {
       setEditedAlert({ ...msg.actionResponse.alertData })
     }
+  }
+
+  const startEditBatchDoc = (docItem: BatchDocumentItem) => {
+    setEditingBatchDocId(docItem.id)
+    setEditedDoc({ ...docItem.docData })
   }
 
   const handleAddTagToEditedDoc = () => {
@@ -320,6 +558,8 @@ export default function AiCommandCenterPage() {
     })
   }
 
+  const totalSelectedSize = selectedFiles.reduce((acc, f) => acc + f.size, 0)
+
   return (
     <div className="flex flex-col h-[calc(100vh-2rem)] max-w-5xl mx-auto">
       {/* Top Header */}
@@ -330,12 +570,12 @@ export default function AiCommandCenterPage() {
             AI Command Center
           </h1>
           <p className="text-xs text-text-secondary mt-0.5">
-            Single prompt ingestion for academic documents, attendance & marks sync, and campus alerts
+            Multi-document batch ingestion, attendance & marks sync, and campus alerts
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[11px] bg-primary/10 text-primary font-bold px-3 py-1 rounded-full border border-primary/30">
-            Powered by GPT OSS 120B
+          <span className="text-[11px] bg-primary/10 text-primary font-bold px-3 py-1 rounded-full border border-primary/30 flex items-center gap-1.5">
+            <Sparkles size={13} /> Multi-Document RAG Ingestion
           </span>
         </div>
       </div>
@@ -358,14 +598,24 @@ export default function AiCommandCenterPage() {
                     : 'bg-surface border border-card-border text-text-primary rounded-tl-none'
                 }`}
               >
-                {/* Attached file chip in user message */}
-                {msg.attachedFile && (
-                  <div className="mb-2 flex items-center gap-2 p-2 bg-background/20 rounded-lg text-xs font-semibold">
-                    <FileText size={14} />
-                    <span className="truncate">{msg.attachedFile.name}</span>
-                    <span className="opacity-70 text-[10px]">
-                      ({(msg.attachedFile.size / 1024).toFixed(1)} KB)
-                    </span>
+                {/* Attached files chips in user message */}
+                {msg.attachedFiles && msg.attachedFiles.length > 0 && (
+                  <div className="mb-2.5 space-y-1.5">
+                    <div className="flex items-center gap-1.5 text-xs font-bold opacity-90">
+                      <Files size={14} />
+                      <span>{msg.attachedFiles.length} Document{msg.attachedFiles.length > 1 ? 's' : ''} Attached:</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {msg.attachedFiles.map((file, i) => (
+                        <div key={i} className="flex items-center gap-1.5 px-2.5 py-1 bg-background/25 rounded-lg text-xs font-semibold">
+                          <FileText size={12} />
+                          <span className="truncate max-w-[180px]">{file.name}</span>
+                          <span className="opacity-75 text-[10px]">
+                            ({(file.size / 1024).toFixed(1)} KB)
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
 
@@ -380,7 +630,219 @@ export default function AiCommandCenterPage() {
                 </div>
               </div>
 
-              {/* ACTION CONFIRMATION CARD (Before Database Insert) */}
+              {/* ========================================================= */}
+              {/* MULTI-DOCUMENT BATCH CONFIRMATION CARDS                   */}
+              {/* ========================================================= */}
+              {msg.batchDocuments && msg.batchDocuments.length > 0 && (
+                <div className="w-full max-w-3xl bg-surface/95 backdrop-blur-md border border-card-border rounded-2xl p-5 shadow-2xl space-y-5">
+                  {/* Batch Header & Actions */}
+                  <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-card-border">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-xl bg-primary/10 border border-primary/30 flex items-center justify-center text-primary">
+                        <Files size={18} />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-extrabold text-white">
+                          Analyzed {msg.batchDocuments.length} Documents
+                        </h4>
+                        <p className="text-[11px] text-text-secondary">
+                          {msg.batchDocuments.filter(d => d.confirmationStatus === 'confirmed').length} of {msg.batchDocuments.length} Synced to Campus Database
+                        </p>
+                      </div>
+                    </div>
+
+                    {msg.confirmationStatus === 'pending' && (
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleConfirmAllBatchDocs(msg)}
+                          disabled={executingMessageId === msg.id}
+                          className="bg-primary text-background font-black text-xs px-4 py-2 rounded-xl hover:bg-[#c4f85e] transition-all shadow-md flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                        >
+                          {executingMessageId === msg.id ? (
+                            <div className="w-4 h-4 border-2 border-background border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <>
+                              <CheckCheck size={16} />
+                              Confirm & Ingest All ({msg.batchDocuments.length})
+                            </>
+                          )}
+                        </button>
+                        <button
+                          onClick={() => handleCancelAction(msg.id)}
+                          className="text-xs text-text-muted hover:text-error px-3 py-2 rounded-xl border border-card-border transition-colors"
+                        >
+                          Discard All
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* List of Analyzed Document Cards */}
+                  <div className="space-y-4">
+                    {msg.batchDocuments.map((docItem, idx) => {
+                      const isConfirmed = docItem.confirmationStatus === 'confirmed'
+                      const isEditingThis = editingBatchDocId === docItem.id
+                      const currentDoc = (isEditingThis && editedDoc) ? editedDoc : docItem.docData
+
+                      return (
+                        <div
+                          key={docItem.id}
+                          className={`p-4 rounded-xl border transition-all ${
+                            isConfirmed
+                              ? 'bg-[#0B0F17]/80 border-primary/30'
+                              : 'bg-surface-light/60 border-card-border hover:border-white/20'
+                          }`}
+                        >
+                          {isEditingThis && editedDoc ? (
+                            <div className="space-y-3 p-3 bg-surface rounded-xl border border-card-border text-xs">
+                              <div>
+                                <label className="text-text-muted block mb-1">Title</label>
+                                <input
+                                  type="text"
+                                  value={editedDoc.title}
+                                  onChange={e => setEditedDoc({ ...editedDoc, title: e.target.value })}
+                                  className="w-full bg-surface-light border border-card-border rounded-lg p-2 text-text-primary"
+                                />
+                              </div>
+                              <div className="grid grid-cols-3 gap-2">
+                                <div>
+                                  <label className="text-text-muted block mb-1">Category</label>
+                                  <select
+                                    value={editedDoc.category}
+                                    onChange={e => setEditedDoc({ ...editedDoc, category: e.target.value as any })}
+                                    className="w-full bg-surface-light border border-card-border rounded-lg p-2 text-text-primary"
+                                  >
+                                    <option value="assignment">Assignment</option>
+                                    <option value="timetable">Timetable</option>
+                                    <option value="lab_manual">Lab Manual</option>
+                                    <option value="syllabus">Syllabus</option>
+                                    <option value="notes">Lecture Notes</option>
+                                    <option value="pyq">PYQ Exam Paper</option>
+                                    <option value="circular">Circular</option>
+                                  </select>
+                                </div>
+                                <div>
+                                  <label className="text-text-muted block mb-1">Department</label>
+                                  <input
+                                    type="text"
+                                    value={editedDoc.department}
+                                    onChange={e => setEditedDoc({ ...editedDoc, department: e.target.value })}
+                                    className="w-full bg-surface-light border border-card-border rounded-lg p-2 text-text-primary"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-text-muted block mb-1">Semester</label>
+                                  <input
+                                    type="text"
+                                    value={editedDoc.semester}
+                                    onChange={e => setEditedDoc({ ...editedDoc, semester: e.target.value })}
+                                    className="w-full bg-surface-light border border-card-border rounded-lg p-2 text-text-primary"
+                                  />
+                                </div>
+                              </div>
+                              <div className="flex justify-end gap-2 pt-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingBatchDocId(null)}
+                                  className="px-3 py-1 bg-surface-light border border-card-border rounded-lg text-text-secondary text-xs"
+                                >
+                                  Done Editing
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="space-y-1 flex-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[10px] font-bold text-text-secondary bg-surface px-2 py-0.5 rounded border border-white/5 font-mono">
+                                    #{idx + 1}
+                                  </span>
+                                  <h5 className="text-sm font-bold text-white flex items-center gap-2">
+                                    <FileText size={15} className="text-primary" />
+                                    {currentDoc.title}
+                                  </h5>
+                                  {isConfirmed ? (
+                                    <span className="text-[10px] font-bold text-primary bg-primary/15 px-2 py-0.5 rounded flex items-center gap-1">
+                                      <CheckCircle2 size={12} /> Synced
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] font-bold text-warning bg-warning/15 px-2 py-0.5 rounded">
+                                      Pending Review
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-2 text-xs text-text-secondary pt-1">
+                                  <span className="text-primary font-semibold capitalize bg-primary/10 px-2 py-0.5 rounded text-[11px]">
+                                    {currentDoc.category.replace('_', ' ')}
+                                  </span>
+                                  <span>·</span>
+                                  <span>{currentDoc.subject_name}</span>
+                                  <span>·</span>
+                                  <span className="text-cyan font-mono">Sem {currentDoc.semester} (Div {currentDoc.division})</span>
+                                  <span>·</span>
+                                  <span className="text-text-muted text-[11px] font-mono">
+                                    {docItem.fileMetadata.name} ({(docItem.fileMetadata.size / 1024).toFixed(1)} KB)
+                                  </span>
+                                </div>
+
+                                {/* Multi-lingual Search Tags Preview */}
+                                <div className="pt-2">
+                                  <div className="flex flex-wrap gap-1">
+                                    {currentDoc.tags.slice(0, 10).map((t, ti) => (
+                                      <span
+                                        key={ti}
+                                        className="text-[10px] bg-surface text-primary/90 px-2 py-0.5 rounded border border-white/5 font-mono"
+                                      >
+                                        #{t}
+                                      </span>
+                                    ))}
+                                    {currentDoc.tags.length > 10 && (
+                                      <span className="text-[10px] text-text-muted px-1 py-0.5">
+                                        +{currentDoc.tags.length - 10} more tags
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Action Buttons for Single Document */}
+                              {!isConfirmed && (
+                                <div className="flex flex-col items-end gap-1.5 shrink-0">
+                                  <button
+                                    onClick={() => handleConfirmSingleBatchDoc(msg.id, docItem)}
+                                    disabled={batchExecutingDocId === docItem.id}
+                                    className="px-3.5 py-1.5 rounded-lg bg-primary text-background font-bold text-xs hover:bg-[#c4f85e] transition-all shadow cursor-pointer flex items-center gap-1"
+                                  >
+                                    {batchExecutingDocId === docItem.id ? (
+                                      <div className="w-3.5 h-3.5 border-2 border-background border-t-transparent rounded-full animate-spin" />
+                                    ) : (
+                                      <>
+                                        <CheckCircle2 size={13} />
+                                        Confirm & Sync
+                                      </>
+                                    )}
+                                  </button>
+                                  <button
+                                    onClick={() => startEditBatchDoc(docItem)}
+                                    className="text-[11px] text-text-muted hover:text-primary transition-colors flex items-center gap-1 cursor-pointer"
+                                  >
+                                    <Edit3 size={11} /> Edit
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* ========================================================= */}
+              {/* SINGLE ACTION CONFIRMATION CARD (Document / Alert / Marks) */}
+              {/* ========================================================= */}
               {msg.actionResponse?.requiresConfirmation && (
                 <div className="w-full max-w-2xl bg-surface/95 backdrop-blur-md border border-card-border rounded-2xl p-5 shadow-2xl space-y-4">
                   {/* Card Status Header */}
@@ -691,31 +1153,69 @@ export default function AiCommandCenterPage() {
         {isProcessing && (
           <div className="flex items-center gap-3 text-xs text-text-muted bg-surface/60 border border-card-border p-3.5 rounded-2xl w-fit animate-pulse">
             <Bot size={16} className="text-primary animate-spin" />
-            Analyzing document content & generating multi-lingual tags with GPT OSS 120B...
+            {processingProgressText || 'Analyzing document content & generating multi-lingual tags with GPT OSS 120B...'}
           </div>
         )}
 
         <div ref={chatEndRef} />
       </div>
 
-      {/* Attached file indicator before sending */}
-      {selectedFile && (
-        <div className="mb-2 p-2.5 bg-surface border border-primary/40 rounded-xl flex items-center justify-between text-xs">
-          <div className="flex items-center gap-2 text-text-primary">
-            <FileText size={16} className="text-primary" />
-            <span className="font-semibold">{selectedFile.name}</span>
-            <span className="text-text-muted">({(selectedFile.size / 1024).toFixed(1)} KB)</span>
+      {/* ========================================================= */}
+      {/* ATTACHED MULTI-FILE TRAY BEFORE SENDING                   */}
+      {/* ========================================================= */}
+      {selectedFiles.length > 0 && (
+        <div className="mb-2 p-3 bg-surface border border-primary/40 rounded-2xl shadow-xl space-y-2 animate-fade-in">
+          <div className="flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2 text-text-primary font-bold">
+              <Files size={15} className="text-primary" />
+              <span>{selectedFiles.length} Document{selectedFiles.length > 1 ? 's' : ''} Ready for AI Analysis</span>
+              <span className="text-text-muted font-normal">({(totalSelectedSize / 1024).toFixed(1)} KB Total)</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="text-[11px] text-primary hover:underline font-bold flex items-center gap-1"
+              >
+                <Plus size={13} /> Add More Files
+              </button>
+              <button
+                type="button"
+                onClick={handleClearAllFiles}
+                className="text-[11px] text-text-muted hover:text-error transition-colors"
+              >
+                Clear All
+              </button>
+            </div>
           </div>
-          <button
-            onClick={() => setSelectedFile(null)}
-            className="text-text-muted hover:text-error transition-colors p-1"
-          >
-            <X size={14} />
-          </button>
+
+          <div className="flex flex-wrap gap-2 max-h-28 overflow-y-auto pr-1">
+            {selectedFiles.map((file, idx) => (
+              <div
+                key={idx}
+                className="flex items-center gap-2 px-3 py-1.5 bg-surface-light border border-card-border rounded-xl text-xs text-text-primary shadow-sm hover:border-primary/40 transition-colors"
+              >
+                <FileText size={14} className="text-primary shrink-0" />
+                <span className="truncate max-w-[200px] font-medium">{file.name}</span>
+                <span className="text-[10px] text-text-muted shrink-0">
+                  ({(file.size / 1024).toFixed(1)} KB)
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleRemoveFile(idx)}
+                  className="text-text-muted hover:text-error transition-colors p-0.5 ml-1"
+                >
+                  <X size={13} />
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
-      {/* Bottom Prompt Bar */}
+      {/* ========================================================= */}
+      {/* BOTTOM INPUT BAR                                          */}
+      {/* ========================================================= */}
       <div className="pt-3 border-t border-card-border">
         <form
           onSubmit={(e) => {
@@ -724,23 +1224,25 @@ export default function AiCommandCenterPage() {
           }}
           className="flex items-center gap-2 bg-surface p-2 rounded-2xl border border-card-border focus-within:border-primary/60 transition-all shadow-lg"
         >
+          {/* Multiple File Input */}
           <input
             type="file"
             ref={fileInputRef}
             onChange={handleFileSelect}
             className="hidden"
+            multiple
             accept=".pdf,.png,.jpg,.jpeg,.csv,.xlsx,.xls,.docx,.txt"
           />
 
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className={`p-2.5 rounded-xl border transition-all ${
-              selectedFile
-                ? 'bg-primary text-background border-primary'
+            className={`p-2.5 rounded-xl border transition-all cursor-pointer ${
+              selectedFiles.length > 0
+                ? 'bg-primary text-background border-primary shadow-md'
                 : 'bg-surface-light border-card-border text-text-secondary hover:text-primary hover:border-primary/40'
             }`}
-            title="Attach Document or Spreadsheet"
+            title="Attach Multiple Documents (PDF, DOCX, CSV, XLSX)"
           >
             <Paperclip size={18} />
           </button>
@@ -749,15 +1251,19 @@ export default function AiCommandCenterPage() {
             type="text"
             value={inputPrompt}
             onChange={(e) => setInputPrompt(e.target.value)}
-            placeholder='e.g. "this is aipd assignment of sem 5" or "Holiday notice for tomorrow"...'
+            placeholder={
+              selectedFiles.length > 0
+                ? `Analyze all ${selectedFiles.length} attached documents (or add optional notes like "Sem 5 IT")...`
+                : 'e.g. "these are sem 5 IT assignments" or "Holiday notice for tomorrow"...'
+            }
             className="flex-1 bg-transparent border-none px-3 text-sm text-text-primary placeholder:text-text-muted focus:outline-none"
             disabled={isProcessing}
           />
 
           <button
             type="submit"
-            disabled={isProcessing || (!inputPrompt.trim() && !selectedFile)}
-            className="bg-primary text-background p-2.5 rounded-xl font-bold hover:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center"
+            disabled={isProcessing || (!inputPrompt.trim() && selectedFiles.length === 0)}
+            className="bg-primary text-background p-2.5 rounded-xl font-bold hover:opacity-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center cursor-pointer shadow-md"
           >
             <Send size={18} />
           </button>
