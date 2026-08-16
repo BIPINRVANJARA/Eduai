@@ -40,86 +40,177 @@ function parsePastedSyllabusTable(rawText: string): BatchDocumentItem[] | null {
   const lines = rawText.split('\n').map(l => l.trim()).filter(l => l.length > 0)
   const results: BatchDocumentItem[] = []
 
+  // Check if text has multiple URLs or download links
+  const linkIndices: number[] = []
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]
-    if (line.startsWith('#') || line.toLowerCase().includes('subjectcode') || line.toLowerCase().includes('download')) {
-      if (!line.includes('http') && !line.includes('DI0') && !line.includes('31')) continue
+    if (lines[i].includes('http://') || lines[i].includes('https://') || lines[i].toLowerCase().includes('[download')) {
+      linkIndices.push(i)
     }
+  }
 
-    // Extract URL
-    let url: string | null = null
-    const mdLinkMatch = line.match(/\[.*?\]\((https?:\/\/[^\s\)]+)\)/i)
-    if (mdLinkMatch) {
-      url = mdLinkMatch[1]
-    } else {
-      const urlMatch = line.match(/(https?:\/\/[^\s\)]+)/i)
-      if (urlMatch) url = urlMatch[1]
-    }
-
-    // Clean line without URL or markdown link
-    let cleanLine = line
-      .replace(/\[.*?\]\((https?:\/\/[^\s\)]+)\)/gi, '')
-      .replace(/(https?:\/\/[^\s\)]+)/gi, '')
-      .replace(/Download PDF/gi, '')
-      .replace(/Download/gi, '')
-      .replace(/[|]+/g, ' ')
-      .trim()
-
-    // Extract Subject Code (e.g. DI02000011, DI02016011, 3150703, etc.)
-    let subjectCode = ''
-    const codeMatch = cleanLine.match(/\b([A-Z]{2,}\d{5,}|\d{7,})\b/i)
-    if (codeMatch) {
-      subjectCode = codeMatch[1].toUpperCase()
-      cleanLine = cleanLine.replace(codeMatch[0], '').trim()
-    }
-
-    // Remove leading line number (e.g. "1 ", "1.", "#1")
-    cleanLine = cleanLine.replace(/^#?\s*\d+[\.\s\t]+/, '').trim()
-
-    // Clean Subject Name
-    const subjectName = cleanLine.replace(/\s{2,}/g, ' ').trim()
-
-    if (subjectName.length >= 2 || subjectCode.length >= 4) {
-      const finalTitle = subjectCode 
-        ? `${subjectName} (${subjectCode}) Syllabus` 
-        : `${subjectName} Syllabus`
+  // METHOD 1: Multi-line chunking anchored by URLs (Matches user format)
+  if (linkIndices.length >= 2) {
+    let lastIndex = 0
+    for (let k = 0; k < linkIndices.length; k++) {
+      const linkLineIdx = linkIndices[k]
+      const linkLine = lines[linkLineIdx]
       
-      const sLower = subjectName.toLowerCase()
-      const isSem5 = sLower.includes('python') || sLower.includes('software') || sLower.includes('blockchain') || sLower.includes('intelligence') || sLower.includes('ai')
-      const detectedSem = isSem5 ? '5' : '1'
+      let url = ''
+      const mdMatch = linkLine.match(/\[.*?\]\((https?:\/\/[^\s\)]+)\)/i)
+      if (mdMatch) {
+        url = mdMatch[1]
+      } else {
+        const directUrlMatch = linkLine.match(/(https?:\/\/[^\s\)]+)/i)
+        if (directUrlMatch) url = directUrlMatch[1]
+      }
 
-      const tags = [
-        sLower,
-        subjectCode.toLowerCase(),
-        'syllabus',
-        'gtu',
-        'gtu syllabus',
-        'course curriculum',
-        `sem ${detectedSem}`,
-        'it_department',
-        `gu: ${subjectName} સિલેબસ`,
-      ].filter(t => t.length > 0)
+      // Gather candidate lines between lastIndex and linkLineIdx
+      const chunkLines = lines.slice(lastIndex, linkLineIdx)
+        .filter(l => !l.startsWith('#') && !['subject', 'code', 'download', 'sr', 'no', 'sr.'].includes(l.toLowerCase()))
+      
+      let subjectCode = ''
+      let subjectName = ''
 
-      results.push({
-        id: `syllabus_pasted_${Date.now()}_${i}`,
-        directFileUrl: url || 'https://s3-ap-southeast-1.amazonaws.com/gtusitecirculars/Syallbus/' + (subjectCode || 'syllabus') + '.pdf',
-        fileMetadata: {
-          name: `${subjectCode || 'GTU'}_${subjectName.replace(/\s+/g, '_')}_Syllabus.pdf`,
-          size: 1024 * 450
-        },
-        docData: {
-          title: finalTitle,
-          category: 'syllabus',
-          department: 'Information Technology',
-          semester: detectedSem,
-          division: 'All',
-          subject_name: subjectName || finalTitle,
-          tags: tags,
-          content_summary: `Official GTU syllabus for ${finalTitle}. Includes course objectives, unit-wise syllabus breakdown, credit distribution, and reference books.`,
-          explanation: `Extracted from university syllabus table with direct cloud download link.`
-        },
-        confirmationStatus: 'pending'
-      })
+      for (const line of chunkLines) {
+        const codeMatch = line.match(/\b([A-Z]{2,}\d{5,}|\d{7,})\b/i)
+        if (codeMatch) {
+          subjectCode = codeMatch[1].toUpperCase()
+          const remainder = line.replace(codeMatch[0], '').replace(/^#?\s*\d+[\.\s\t]+/, '').trim()
+          if (remainder.length > 2 && !subjectName) subjectName = remainder
+        } else if (!line.match(/^\d+$/)) {
+          if (!subjectName) {
+            subjectName = line
+          } else {
+            subjectName += ' ' + line
+          }
+        }
+      }
+
+      if (!subjectName && subjectCode) {
+        subjectName = `Course ${subjectCode}`
+      }
+
+      if (subjectName || subjectCode || url) {
+        const finalTitle = subjectCode ? `${subjectName} (${subjectCode}) Syllabus` : `${subjectName} Syllabus`
+        const sLower = subjectName.toLowerCase()
+        const isSem5 = sLower.includes('blockchain') || sLower.includes('product development') || sLower.includes('prompt')
+        const detectedSem = isSem5 ? '5' : '1'
+
+        const tags = [
+          sLower,
+          subjectCode.toLowerCase(),
+          'syllabus',
+          'gtu',
+          'gtu syllabus',
+          'course curriculum',
+          `sem ${detectedSem}`,
+          'it_department',
+          `gu: ${subjectName} સિલેબસ`,
+        ].filter(t => t.length > 0)
+
+        results.push({
+          id: `syllabus_multi_${Date.now()}_${k}`,
+          directFileUrl: url || 'https://s3-ap-southeast-1.amazonaws.com/gtusitecirculars/Syallbus/' + (subjectCode || 'syllabus') + '.pdf',
+          fileMetadata: {
+            name: `${subjectCode || 'GTU'}_${subjectName.replace(/\s+/g, '_')}_Syllabus.pdf`,
+            size: 1024 * 450
+          },
+          docData: {
+            title: finalTitle,
+            category: 'syllabus',
+            department: 'Information Technology',
+            semester: detectedSem,
+            division: 'All',
+            subject_name: subjectName || finalTitle,
+            tags: tags,
+            content_summary: `Official GTU syllabus for ${finalTitle}. Includes course objectives, unit-wise syllabus breakdown, credit distribution, and reference books.`,
+            explanation: `Extracted from university syllabus table with direct cloud download link.`
+          },
+          confirmationStatus: 'pending'
+        })
+      }
+
+      lastIndex = linkLineIdx + 1
+    }
+  }
+
+  // METHOD 2: Single-line row parser (Fallback)
+  if (results.length === 0) {
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]
+      if (line.startsWith('#') || line.toLowerCase().includes('subjectcode') || line.toLowerCase().includes('download')) {
+        if (!line.includes('http') && !line.includes('DI0') && !line.includes('31')) continue
+      }
+
+      let url: string | null = null
+      const mdLinkMatch = line.match(/\[.*?\]\((https?:\/\/[^\s\)]+)\)/i)
+      if (mdLinkMatch) {
+        url = mdLinkMatch[1]
+      } else {
+        const urlMatch = line.match(/(https?:\/\/[^\s\)]+)/i)
+        if (urlMatch) url = urlMatch[1]
+      }
+
+      let cleanLine = line
+        .replace(/\[.*?\]\((https?:\/\/[^\s\)]+)\)/gi, '')
+        .replace(/(https?:\/\/[^\s\)]+)/gi, '')
+        .replace(/Download PDF/gi, '')
+        .replace(/Download/gi, '')
+        .replace(/[|]+/g, ' ')
+        .trim()
+
+      let subjectCode = ''
+      const codeMatch = cleanLine.match(/\b([A-Z]{2,}\d{5,}|\d{7,})\b/i)
+      if (codeMatch) {
+        subjectCode = codeMatch[1].toUpperCase()
+        cleanLine = cleanLine.replace(codeMatch[0], '').trim()
+      }
+
+      cleanLine = cleanLine.replace(/^#?\s*\d+[\.\s\t]+/, '').trim()
+      const subjectName = cleanLine.replace(/\s{2,}/g, ' ').trim()
+
+      if (subjectName.length >= 2 || subjectCode.length >= 4) {
+        const finalTitle = subjectCode 
+          ? `${subjectName} (${subjectCode}) Syllabus` 
+          : `${subjectName} Syllabus`
+        
+        const sLower = subjectName.toLowerCase()
+        const isSem5 = sLower.includes('python') || sLower.includes('software') || sLower.includes('blockchain') || sLower.includes('intelligence') || sLower.includes('ai')
+        const detectedSem = isSem5 ? '5' : '1'
+
+        const tags = [
+          sLower,
+          subjectCode.toLowerCase(),
+          'syllabus',
+          'gtu',
+          'gtu syllabus',
+          'course curriculum',
+          `sem ${detectedSem}`,
+          'it_department',
+          `gu: ${subjectName} સિલેબસ`,
+        ].filter(t => t.length > 0)
+
+        results.push({
+          id: `syllabus_pasted_${Date.now()}_${i}`,
+          directFileUrl: url || 'https://s3-ap-southeast-1.amazonaws.com/gtusitecirculars/Syallbus/' + (subjectCode || 'syllabus') + '.pdf',
+          fileMetadata: {
+            name: `${subjectCode || 'GTU'}_${subjectName.replace(/\s+/g, '_')}_Syllabus.pdf`,
+            size: 1024 * 450
+          },
+          docData: {
+            title: finalTitle,
+            category: 'syllabus',
+            department: 'Information Technology',
+            semester: detectedSem,
+            division: 'All',
+            subject_name: subjectName || finalTitle,
+            tags: tags,
+            content_summary: `Official GTU syllabus for ${finalTitle}. Includes course objectives, unit-wise syllabus breakdown, credit distribution, and reference books.`,
+            explanation: `Extracted from university syllabus table with direct cloud download link.`
+          },
+          confirmationStatus: 'pending'
+        })
+      }
     }
   }
 
