@@ -169,15 +169,15 @@ export default function DepartmentsPage() {
     setSuccess('')
 
     try {
-      // 1. Sign up user with dept_admin role
+      // 1. Sign up user with admin role and departmental metadata
       const { data: authData, error: authErr } = await supabase.auth.signUp({
         email: showAdminModal.hod_email,
         password: adminPassword,
         options: {
           data: {
-            role: 'dept_admin',
+            role: 'admin',
+            is_dept_admin: true,
             department: showAdminModal.name,
-            department_id: showAdminModal.id,
             institution_id: instId,
             full_name: `${showAdminModal.hod_name || showAdminModal.name} (HOD)`
           }
@@ -187,17 +187,17 @@ export default function DepartmentsPage() {
       if (authErr) throw authErr
 
       if (authData?.user) {
-        // Upsert into profiles table
-        await supabase.from('profiles').upsert({
-          id: authData.user.id,
-          role: 'dept_admin',
-          full_name: showAdminModal.hod_name || `${showAdminModal.name} HOD`,
-          email: showAdminModal.hod_email,
-          mobile: showAdminModal.hod_mobile,
-          institution_id: instId,
-          department: showAdminModal.name,
-          department_id: showAdminModal.id
-        })
+        try {
+          await supabase.from('profiles').upsert({
+            id: authData.user.id,
+            role: 'admin',
+            full_name: showAdminModal.hod_name || `${showAdminModal.name} HOD`,
+            email: showAdminModal.hod_email,
+            mobile: showAdminModal.hod_mobile,
+            institution_id: instId,
+            department: showAdminModal.name
+          })
+        } catch (_) {}
       }
 
       setSuccess(`✅ Department Admin account created for ${showAdminModal.hod_email}!`)

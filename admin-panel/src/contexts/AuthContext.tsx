@@ -162,7 +162,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (session?.user) {
         setSession(session)
         setUser(session.user)
-        const uRole = (session.user.user_metadata?.role as AdminRole) || 'institute_admin'
+        const isDept = session.user.user_metadata?.is_dept_admin || session.user.user_metadata?.role === 'dept_admin'
+        const uRole: AdminRole = isDept ? 'dept_admin' : ((session.user.user_metadata?.role as AdminRole) || 'institute_admin')
         const uDept = session.user.user_metadata?.department || null
         setAdminRole(uRole)
         if (uDept) {
@@ -182,7 +183,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (session?.user) {
         setSession(session)
         setUser(session.user)
-        const uRole = (session.user.user_metadata?.role as AdminRole) || 'institute_admin'
+        const isDept = session.user.user_metadata?.is_dept_admin || session.user.user_metadata?.role === 'dept_admin'
+        const uRole: AdminRole = isDept ? 'dept_admin' : ((session.user.user_metadata?.role as AdminRole) || 'institute_admin')
         const uDept = session.user.user_metadata?.department || null
         setAdminRole(uRole)
         if (uDept) {
