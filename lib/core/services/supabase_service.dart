@@ -212,6 +212,18 @@ class SupabaseService {
         }
       }
 
+      final lowerText = userText.toLowerCase();
+      final bool isStudentDataQuery = lowerText.contains('attendance') ||
+          lowerText.contains('attendence') ||
+          lowerText.contains('percentage') ||
+          lowerText.contains('eligibility') ||
+          lowerText.contains('eligible') ||
+          lowerText.contains('gtu') ||
+          lowerText.contains('હાજરી') ||
+          lowerText.contains('mark') ||
+          lowerText.contains('marks') ||
+          lowerText.contains('result');
+
       final bool isGujaratiInput = RegExp(r'[\u0A80-\u0AFF]').hasMatch(userText);
       final bool isHindiInput = RegExp(r'[\u0900-\u097F]').hasMatch(userText);
       final String targetLanguage = isGujaratiInput
@@ -272,14 +284,15 @@ CRITICAL INSTRUCTIONS:
         }
       ];
 
-      // Add last 6 turns of conversation history with document context
+      // Add last 6 turns of conversation history with document context (excluding initial greeting)
       if (conversationHistory != null && conversationHistory.isNotEmpty) {
-        final recent = conversationHistory.length > 6
-            ? conversationHistory.sublist(conversationHistory.length - 6)
-            : conversationHistory;
+        final filtered = conversationHistory.where((m) => !m.id.startsWith('welcome_')).toList();
+        final recent = filtered.length > 6
+            ? filtered.sublist(filtered.length - 6)
+            : filtered;
         for (final msg in recent) {
           String content = msg.text;
-          if (msg.payload != null && msg.payload!['title'] != null) {
+          if (msg.payload != null && msg.payload!['title'] != null && !isStudentDataQuery) {
             content += "\n[System Context: Active Referenced Document: \"${msg.payload!['title']}\", Subject: \"${msg.payload!['subject']}\", Category: \"${msg.payload!['category']}\"]";
           }
           messagesPayload.add({

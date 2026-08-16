@@ -56,7 +56,95 @@ class ChatRepository {
         lower.contains('हल') ||
         lower.contains('समझाएं');
 
-    // 1. Intelligent Multi-Tag & Multilingual Document Search (Only for initial document fetch requests)
+    // 1. Direct Student Attendance, Marks & GTU Eligibility Resolver
+    if (isStudentDataQuery) {
+      try {
+        if (SupabaseService.client != null) {
+          final currentUser = SupabaseService.client!.auth.currentUser;
+          Map<String, dynamic>? studentRec;
+          
+          if (currentUser != null) {
+            studentRec = await SupabaseService.client!
+                .from('students')
+                .select('*')
+                .or('profile_id.eq.${currentUser.id},email.eq.${currentUser.email}')
+                .maybeSingle();
+          }
+
+          if (studentRec == null && student != null && student.enrollmentNo.isNotEmpty) {
+            studentRec = await SupabaseService.client!
+                .from('students')
+                .select('*')
+                .eq('enrollment_no', student.enrollmentNo)
+                .maybeSingle();
+          }
+
+          if (studentRec != null) {
+            final name = studentRec['full_name'] ?? student?.studentName ?? 'Student';
+            final enr = studentRec['enrollment_no'] ?? student?.enrollmentNo ?? '';
+            final attVal = studentRec['overall_attendance'] ?? student?.overallAttendance ?? 85.0;
+            final double att = (attVal is num ? attVal : double.tryParse(attVal.toString()) ?? 85.0).toDouble();
+            final marks = studentRec['marks_data'] as Map<String, dynamic>? ?? {};
+            final bool isEligible = att >= 75.0;
+            final dept = studentRec['department'] ?? 'Information Technology';
+            final sem = studentRec['semester'] ?? '5';
+
+            final buffer = StringBuffer();
+            if (isGujarati) {
+              buffer.writeln('📊 **વિદ્યાર્થી હાજરી અને પ્રગતિ રિપોર્ટ**\n');
+              buffer.writeln('👤 **વિદ્યાર્થી:** $name');
+              buffer.writeln('🆔 **એનરોલમેન્ટ:** `$enr`');
+              buffer.writeln('🏫 **વિભાગ:** $dept (સેમેસ્ટર $sem)\n');
+              buffer.writeln('📈 **કુલ હાજરી (Overall Attendance):** **${att.toStringAsFixed(1)}%**');
+              if (isEligible) {
+                buffer.writeln('✅ **GTU પરીક્ષા પાત્રતા:** **પાત્ર (Eligible)** (75% થી વધુ હાજરી છે)\n');
+              } else {
+                buffer.writeln('⚠️ **GTU પરીક્ષા પાત્રતા:** **અપાત્ર / ડિફોલ્ટર (Not Eligible)** (નિયમ મુજબ 75% હાજરી જરૂરી છે)\n');
+              }
+
+              if (marks.isNotEmpty) {
+                buffer.writeln('📚 **વિષય મુજબ વિગતો:**');
+                marks.forEach((sub, val) {
+                  final d = val as Map<String, dynamic>? ?? {};
+                  buffer.writeln('• **$sub**: મિડ-સેમ: ${d['mid_sem'] ?? '—'}/30, પ્રેક્ટિકલ: ${d['practical'] ?? '—'}/30, હાજરી: ${d['attendance'] ?? '—'}%');
+                });
+              }
+            } else {
+              buffer.writeln('📊 **Student Academic & Attendance Status**\n');
+              buffer.writeln('👤 **Student:** $name');
+              buffer.writeln('🆔 **Enrollment No:** `$enr`');
+              buffer.writeln('🏫 **Department:** $dept (Semester $sem)\n');
+              buffer.writeln('📈 **Overall Attendance:** **${att.toStringAsFixed(1)}%**');
+              if (isEligible) {
+                buffer.writeln('✅ **GTU Exam Eligibility:** **ELIGIBLE** (Meets the ≥75% mandatory university requirement)\n');
+              } else {
+                buffer.writeln('⚠️ **GTU Exam Eligibility:** **DEFAULTER / AT RISK** (Below the 75% GTU threshold. Please attend upcoming lectures to avoid detention.)\n');
+              }
+
+              if (marks.isNotEmpty) {
+                buffer.writeln('📚 **Subject-wise Performance Breakdown:**');
+                marks.forEach((sub, val) {
+                  final d = val as Map<String, dynamic>? ?? {};
+                  buffer.writeln('• **$sub**: Mid-Sem: `${d['mid_sem'] ?? '—'}/30`, Practical: `${d['practical'] ?? '—'}/30`, Subject Attendance: `${d['attendance'] ?? '—'}%`');
+                });
+              }
+            }
+
+            return ChatMessageModel(
+              id: DateTime.now().millisecondsSinceEpoch.toString(),
+              sender: ChatSender.ai,
+              text: buffer.toString().trim(),
+              timestamp: DateTime.now(),
+              dataType: ChatDataType.none,
+            );
+          }
+        }
+      } catch (e) {
+        // Fallback to Groq
+      }
+    }
+
+    // 2. Intelligent Multi-Tag & Multilingual Document Search (Only for initial document fetch requests)
     final String currentInstId = (student?.collegeId.isNotEmpty == true
             ? student!.collegeId
             : college.id)
