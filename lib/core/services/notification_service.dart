@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../theme/app_theme.dart';
 import '../../models/notification_model.dart';
 
@@ -7,6 +9,96 @@ class NotificationService {
   static final GlobalKey<ScaffoldMessengerState> messengerKey =
       GlobalKey<ScaffoldMessengerState>();
 
+  static final FlutterLocalNotificationsPlugin _localNotifications =
+      FlutterLocalNotificationsPlugin();
+
+  static bool _isInitialized = false;
+
+  /// Initialize local notification channels & permissions
+  static Future<void> initialize() async {
+    if (_isInitialized) return;
+
+    try {
+      const AndroidInitializationSettings androidSettings =
+          AndroidInitializationSettings('@mipmap/ic_launcher');
+
+      const InitializationSettings initSettings = InitializationSettings(
+        android: androidSettings,
+      );
+
+      await _localNotifications.initialize(
+        settings: initSettings,
+        onDidReceiveNotificationResponse: (NotificationResponse response) {
+          if (kDebugMode) {
+            print('Notification clicked: ${response.payload}');
+          }
+        },
+      );
+
+      // Request notification permissions for Android 13+
+      final androidPlugin = _localNotifications
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>();
+      if (androidPlugin != null) {
+        await androidPlugin.requestNotificationsPermission();
+      }
+
+      _isInitialized = true;
+    } catch (e) {
+      if (kDebugMode) print('Failed to initialize local notifications: $e');
+    }
+  }
+
+  /// Show both Android System Status Bar notification AND in-app floating banner
+  static Future<void> showNotification(NotificationModel alert,
+      {VoidCallback? onTap}) async {
+    // 1. Show System Status Bar Notification
+    await showSystemNotification(alert);
+
+    // 2. Show In-App Floating Banner
+    showInAppBanner(alert, onTap: onTap);
+  }
+
+  /// Trigger real Android OS Status Bar notification
+  static Future<void> showSystemNotification(NotificationModel alert) async {
+    try {
+      if (!_isInitialized) {
+        await initialize();
+      }
+
+      const AndroidNotificationDetails androidDetails =
+          AndroidNotificationDetails(
+        'eduai_campus_alerts',
+        '📢 Campus Alerts & Broadcasts',
+        channelDescription:
+            'Real-time announcements, attendance warnings, exam timetables and holiday notices',
+        importance: Importance.max,
+        priority: Priority.high,
+        showWhen: true,
+        enableVibration: true,
+        playSound: true,
+        icon: '@mipmap/ic_launcher',
+        styleInformation: BigTextStyleInformation(''),
+      );
+
+      const NotificationDetails platformDetails =
+          NotificationDetails(android: androidDetails);
+
+      final notifId = alert.id.hashCode & 0x7FFFFFFF;
+
+      await _localNotifications.show(
+        id: notifId,
+        title: alert.title,
+        body: alert.body,
+        notificationDetails: platformDetails,
+        payload: alert.id,
+      );
+    } catch (e) {
+      if (kDebugMode) print('Error showing system notification: $e');
+    }
+  }
+
+  /// Show In-App Floating Banner
   static void showInAppBanner(NotificationModel alert, {VoidCallback? onTap}) {
     HapticFeedback.heavyImpact();
 
@@ -101,24 +193,24 @@ class NotificationService {
                             alert.title,
                             style: const TextStyle(
                               color: AppColors.textPrimary,
-                              fontSize: 13.5,
                               fontWeight: FontWeight.w900,
-                              letterSpacing: -0.2,
+                              fontSize: 14,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color: badgeColor.withOpacity(0.18),
+                            color: badgeColor.withOpacity(0.15),
                             borderRadius: BorderRadius.circular(6),
                           ),
-                          child: const Text(
-                            'LIVE ALERT',
+                          child: Text(
+                            'LIVE',
                             style: TextStyle(
-                              color: AppColors.textPrimary,
+                              color: badgeColor,
                               fontSize: 9,
                               fontWeight: FontWeight.w900,
                               letterSpacing: 0.5,
@@ -127,7 +219,7 @@ class NotificationService {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 4),
                     Text(
                       alert.body,
                       style: const TextStyle(

@@ -53,6 +53,9 @@ export default function UploadPage() {
   const [customTagInput, setCustomTagInput] = useState('')
 
   // Manual Mode States
+  const [manualUploadSource, setManualUploadSource] = useState<'file' | 'link'>('file')
+  const [manualLinkUrl, setManualLinkUrl] = useState('')
+  const [manualFileName, setManualFileName] = useState('')
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -159,8 +162,12 @@ export default function UploadPage() {
   // Handle Manual Form Submission
   const handleManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!file) {
-      setError('Please select a file to upload.')
+    if (manualUploadSource === 'file' && !file) {
+      setError('Please select a file to upload or switch to "Direct Link URL" mode.')
+      return
+    }
+    if (manualUploadSource === 'link' && !manualLinkUrl.trim()) {
+      setError('Please enter a valid document download link (e.g. AWS S3, Google Drive, or university URL).')
       return
     }
 
@@ -169,17 +176,26 @@ export default function UploadPage() {
     setSuccess('')
 
     try {
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${crypto.randomUUID()}.${fileExt}`
-      const filePath = `${formData.category}/${fileName}`
-      
       const currentInstId = institution?.id || '6c6e9b83-cabf-4b13-855b-97d2e1461177'
+      let finalFileUrl = manualLinkUrl.trim()
+      let finalFileName = manualFileName.trim() || `${formData.title}.pdf`
+      let finalFileSize = 1024 * 350
 
-      const { error: uploadError } = await supabase.storage
-        .from('documents')
-        .upload(filePath, file)
+      if (manualUploadSource === 'file' && file) {
+        const fileExt = file.name.split('.').pop()
+        const generatedName = `${crypto.randomUUID()}.${fileExt}`
+        const filePath = `${formData.category}/${generatedName}`
+        
+        const { error: uploadError } = await supabase.storage
+          .from('documents')
+          .upload(filePath, file)
 
-      if (uploadError) throw uploadError
+        if (uploadError) throw uploadError
+
+        finalFileUrl = filePath
+        finalFileName = file.name
+        finalFileSize = file.size
+      }
 
       const { error: dbError } = await supabase.from('documents').insert([
         {
@@ -189,20 +205,23 @@ export default function UploadPage() {
           department: formData.department,
           semester: formData.semester,
           division: formData.division,
-          subject_name: formData.subject_name,
+          subject_name: formData.subject_name || formData.title,
           tags: formData.tags,
-          file_url: filePath,
-          file_name: file.name,
-          file_size: file.size,
-          uploaded_by: user?.id,
+          content_summary: formData.description || `Academic document: ${formData.title}`,
+          file_url: finalFileUrl,
+          file_name: finalFileName,
+          file_size: finalFileSize,
+          uploaded_by: user?.id || null,
           institution_id: currentInstId,
         },
       ])
 
       if (dbError) throw dbError
 
-      setSuccess('✅ Document uploaded successfully!')
+      setSuccess('✅ Document registered and published successfully!')
       setFile(null)
+      setManualLinkUrl('')
+      setManualFileName('')
       setFormData({
         title: '',
         description: '',
@@ -514,11 +533,72 @@ export default function UploadPage() {
       {/* Mode 2: Manual Form Upload */}
       {activeTab === 'manual' && (
         <form onSubmit={handleManualSubmit} className="bg-surface p-6 sm:p-8 rounded-2xl border border-card-border space-y-6">
+          {/* Source Selector: File vs Direct Link */}
           <div>
             <label className="block text-sm font-medium text-text-secondary mb-2">
-              Select Document File *
+              Document Source Mode *
             </label>
-            <FileUploader selectedFile={file} onFileSelect={setFile} />
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <button
+                type="button"
+                onClick={() => setManualUploadSource('file')}
+                className={`py-3 px-4 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                  manualUploadSource === 'file'
+                    ? 'bg-primary/15 border-primary text-primary shadow-sm'
+                    : 'bg-surface-light border-card-border text-text-secondary hover:text-white'
+                }`}
+              >
+                <FileText size={16} />
+                Upload Local File (PDF / DOCX)
+              </button>
+              <button
+                type="button"
+                onClick={() => setManualUploadSource('link')}
+                className={`py-3 px-4 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                  manualUploadSource === 'link'
+                    ? 'bg-cyan/15 border-cyan text-cyan shadow-sm'
+                    : 'bg-surface-light border-card-border text-text-secondary hover:text-white'
+                }`}
+              >
+                <Tag size={16} />
+                Attach Direct Cloud Link (AWS S3 / URL)
+              </button>
+            </div>
+
+            {manualUploadSource === 'file' ? (
+              <FileUploader selectedFile={file} onFileSelect={setFile} />
+            ) : (
+              <div className="space-y-3 bg-surface-light p-4 rounded-xl border border-card-border">
+                <div>
+                  <label className="block text-xs font-semibold text-text-secondary mb-1">
+                    Direct Document Download URL *
+                  </label>
+                  <input
+                    type="url"
+                    required={manualUploadSource === 'link'}
+                    value={manualLinkUrl}
+                    onChange={(e) => setManualLinkUrl(e.target.value)}
+                    placeholder="https://s3-ap-southeast-1.amazonaws.com/gtusitecirculars/Syallbus/DI01000011.pdf"
+                    className="w-full bg-surface border border-card-border rounded-lg px-3.5 py-2.5 text-cyan font-mono text-xs focus:outline-none focus:border-cyan focus:ring-1 focus:ring-cyan"
+                  />
+                  <span className="text-[11px] text-text-muted mt-1 block">
+                    Paste any official university AWS S3, Google Drive, or cloud PDF link.
+                  </span>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-text-secondary mb-1">
+                    Display File Name (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={manualFileName}
+                    onChange={(e) => setManualFileName(e.target.value)}
+                    placeholder="e.g. DI01000011_Induction_Programme.pdf"
+                    className="w-full bg-surface border border-card-border rounded-lg px-3.5 py-2 text-text-primary text-xs focus:outline-none focus:border-cyan"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

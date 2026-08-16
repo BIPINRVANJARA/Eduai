@@ -106,8 +106,8 @@ class NotificationNotifier extends StateNotifier<List<NotificationModel>> {
               // Prepend to notifications list
               state = [newAlert, ...state.where((n) => n.id != newAlert.id)];
 
-              // Trigger Live In-App Heads-Up Push Notification
-              NotificationService.showInAppBanner(newAlert);
+              // Trigger Live System Status Bar Notification + In-App Heads-Up Banner
+              NotificationService.showNotification(newAlert);
             },
           )
           .subscribe();
