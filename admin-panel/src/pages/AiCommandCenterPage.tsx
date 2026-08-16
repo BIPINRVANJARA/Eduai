@@ -493,11 +493,20 @@ export default function AiCommandCenterPage() {
     try {
       if (msg.actionResponse.actionType === 'INSERT_DOCUMENT') {
         const docData = (editingCardId === msg.id && editedDoc) ? editedDoc : msg.actionResponse.documentData!
-        let fileUrl = 'https://ifframkwyjegmxubscnk.supabase.co/storage/v1/object/public/documents/sample.pdf'
+        
+        let fileUrl = docData.file_url || ''
+        const urlInText = msg.text.match(/(https?:\/\/[^\s\)]+)/i)
+        if (!fileUrl && urlInText) {
+          fileUrl = urlInText[1]
+        }
+        if (!fileUrl) {
+          fileUrl = 'https://ifframkwyjegmxubscnk.supabase.co/storage/v1/object/public/documents/sample.pdf'
+        }
+
         let fileName = msg.attachedFiles?.[0]?.name || `${docData.title}.pdf`
         let fileSize = msg.attachedFiles?.[0]?.size || 1024 * 150
 
-        // Find file blob
+        // Find file blob if uploaded locally
         const fileToUpload = msg.fileBlobs?.[0]
         if (fileToUpload) {
           const cleanName = fileToUpload.name.replace(/[^a-zA-Z0-9._-]/g, '_')

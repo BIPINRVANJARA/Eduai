@@ -7,6 +7,7 @@ export interface ExtractedDocMetadata {
   subject_name: string;
   tags: string[];
   content_summary: string;
+  file_url?: string;
   explanation: string;
 }
 
@@ -173,13 +174,14 @@ ${fileSnippetText ? `File Content Snippet: """${fileSnippetText}"""` : ''}`;
       message: parsed.message || 'I have analyzed your document and automatically generated academic tags and categorization. Please review below:',
       documentData: parsed.documentData ? {
         title: parsed.documentData.title || (attachedFile ? attachedFile.name.replace(/\.[^/.]+$/, '') : 'Academic Document'),
-        category: parsed.documentData.category || 'other',
+        category: parsed.documentData.category || (prompt.toLowerCase().includes('syllabus') ? 'syllabus' : 'other'),
         department: parsed.documentData.department || 'Information Technology',
         semester: String(parsed.documentData.semester || '1'),
         division: parsed.documentData.division || 'All',
         subject_name: parsed.documentData.subject_name || parsed.documentData.title || '',
         tags: generatedTags,
         content_summary: parsed.documentData.content_summary || prompt,
+        file_url: (prompt.match(/(https?:\/\/[^\s\)]+)/i) || [])[1] || parsed.documentData.file_url,
         explanation: parsed.documentData.explanation || 'Extracted document metadata with auto-generated tags.'
       } : undefined,
       alertData: parsed.alertData ? {
@@ -197,7 +199,7 @@ ${fileSnippetText ? `File Content Snippet: """${fileSnippetText}"""` : ''}`;
     console.error('Universal Groq Agent error:', error);
     // Fallback logic
     const lower = prompt.toLowerCase();
-    const isDoc = attachedFile || lower.includes('upload') || lower.includes('pdf') || lower.includes('timetable') || lower.includes('assignment') || lower.includes('manual');
+    const isDoc = attachedFile || lower.includes('upload') || lower.includes('pdf') || lower.includes('timetable') || lower.includes('assignment') || lower.includes('manual') || lower.includes('syllabus') || lower.includes('http');
     
     if (isDoc) {
       const isSem5 = lower.includes('sem 5') || lower.includes('5th sem') || lower.includes('sem5');
@@ -210,7 +212,7 @@ ${fileSnippetText ? `File Content Snippet: """${fileSnippetText}"""` : ''}`;
         message: '📄 I analyzed your document details and generated comprehensive academic search tags. Please confirm before adding to the repository:',
         documentData: {
           title: attachedFile ? attachedFile.name.replace(/\.[^/.]+$/, '') : (isAipd ? 'AIPD Assignment - Sem 5' : 'Academic Document'),
-          category: lower.includes('assignment') ? 'assignment' : (lower.includes('timetable') ? 'timetable' : (lower.includes('manual') ? 'lab_manual' : 'notes')),
+          category: lower.includes('syllabus') ? 'syllabus' : (lower.includes('assignment') ? 'assignment' : (lower.includes('timetable') ? 'timetable' : (lower.includes('manual') ? 'lab_manual' : 'notes'))),
           department: 'Information Technology',
           semester: isSem5 ? '5' : '1',
           division: 'All',
@@ -218,6 +220,7 @@ ${fileSnippetText ? `File Content Snippet: """${fileSnippetText}"""` : ''}`;
           tags: isAipd 
             ? ['aipd', 'aipd assignment', 'artificial intelligence', 'sem 5', 'semester 5', 'information technology', 'gtu', 'gu: એઆઈપીડી', 'gu: એસાઇનમેન્ટ']
             : ['academic_doc', 'semester 5', 'gtu', 'it_department'],
+          file_url: (prompt.match(/(https?:\/\/[^\s\)]+)/i) || [])[1],
           content_summary: prompt || 'Academic document uploaded via AI Copilot.',
           explanation: 'Auto-categorized document with generated multilingual search tags.'
         }

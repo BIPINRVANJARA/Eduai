@@ -96,9 +96,20 @@ export default function DocumentsPage() {
 
   const handleDownload = async (fileUrl: string, fileName: string) => {
     try {
+      if (!fileUrl) {
+        showToast('No downloadable URL found for this document.', 'error')
+        return
+      }
+
+      // If it's already an absolute URL (e.g. AWS S3 link or Supabase Public URL)
+      if (fileUrl.startsWith('http://') || fileUrl.startsWith('https://')) {
+        window.open(fileUrl, '_blank')
+        return
+      }
+
+      // Otherwise download from Supabase Storage path
       const { data, error } = await supabase.storage.from('documents').download(fileUrl)
       if (error) {
-        // Fallback to direct public URL
         const publicUrl = supabase.storage.from('documents').getPublicUrl(fileUrl).data.publicUrl
         window.open(publicUrl, '_blank')
         return
@@ -107,11 +118,12 @@ export default function DocumentsPage() {
       const url = URL.createObjectURL(data)
       const a = document.createElement('a')
       a.href = url
-      a.download = fileName
+      a.download = fileName || 'document.pdf'
       a.click()
       URL.revokeObjectURL(url)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error downloading file:', error)
+      showToast('Error opening file: ' + error.message, 'error')
     }
   }
 
@@ -162,6 +174,7 @@ export default function DocumentsPage() {
           subject_name: editingDoc.subject_name,
           description: editingDoc.description,
           tags: editingDoc.tags,
+          file_url: editingDoc.file_url,
           content_summary: editingDoc.description || editingDoc.content_summary
         })
         .eq('id', editingDoc.id)
@@ -458,6 +471,18 @@ export default function DocumentsPage() {
                     ))}
                   </select>
                 </div>
+              </div>
+
+              {/* Direct Download URL */}
+              <div>
+                <label className="block text-text-secondary font-semibold mb-1">Direct Download URL (Cloud / Web Link)</label>
+                <input
+                  type="text"
+                  value={editingDoc.file_url || ''}
+                  onChange={e => setEditingDoc({ ...editingDoc, file_url: e.target.value })}
+                  className="w-full bg-surface-light border border-card-border rounded-xl px-3.5 py-2.5 text-cyan font-mono text-xs focus:outline-none focus:border-primary"
+                  placeholder="https://..."
+                />
               </div>
 
               {/* Description / Summary */}
