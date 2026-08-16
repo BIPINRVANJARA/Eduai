@@ -33,13 +33,35 @@ class ChatRepository {
         lower.contains('progress') ||
         lower.contains('grade');
 
-    // 1. Intelligent Multi-Tag & Multilingual Document Search (Only for document requests)
+    final bool isQuestionAnsweringRequest = lower.contains('que') ||
+        lower.contains('question') ||
+        lower.contains('ans') ||
+        lower.contains('answer') ||
+        lower.contains('solve') ||
+        lower.contains('solution') ||
+        lower.contains('explain') ||
+        lower.contains('step') ||
+        lower.contains('what is') ||
+        lower.contains('how to') ||
+        lower.contains('define') ||
+        lower.contains('describe') ||
+        lower.contains('summary') ||
+        lower.contains('પ્રશ્ન') ||
+        lower.contains('જવાબ') ||
+        lower.contains('ઉકેલ') ||
+        lower.contains('સમજાવો') ||
+        lower.contains('વિસ્તાર') ||
+        lower.contains('उत्तर') ||
+        lower.contains('हल') ||
+        lower.contains('समझाएं');
+
+    // 1. Intelligent Multi-Tag & Multilingual Document Search (Only for initial document fetch requests)
     final String currentInstId = (student?.collegeId.isNotEmpty == true
             ? student!.collegeId
             : college.id)
         .trim();
 
-    if (!isStudentDataQuery) {
+    if (!isStudentDataQuery && !isQuestionAnsweringRequest) {
       try {
         if (SupabaseService.client != null) {
           var docQuery = SupabaseService.client!.from('documents').select('*');
