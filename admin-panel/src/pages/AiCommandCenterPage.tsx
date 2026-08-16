@@ -48,7 +48,6 @@ function parsePastedSyllabusTable(rawText: string): BatchDocumentItem[] | null {
     }
   }
 
-  // METHOD 1: Multi-line chunking anchored by URLs (Matches user format)
   if (linkIndices.length >= 2) {
     let lastIndex = 0
     for (let k = 0; k < linkIndices.length; k++) {
@@ -64,26 +63,49 @@ function parsePastedSyllabusTable(rawText: string): BatchDocumentItem[] | null {
         if (directUrlMatch) url = directUrlMatch[1]
       }
 
-      // Gather candidate lines between lastIndex and linkLineIdx
-      const chunkLines = lines.slice(lastIndex, linkLineIdx)
-        .filter(l => !l.startsWith('#') && !['subject', 'code', 'download', 'sr', 'no', 'sr.'].includes(l.toLowerCase()))
+      // Include all lines from lastIndex up to AND INCLUDING linkLineIdx
+      const chunkLines = lines.slice(lastIndex, linkLineIdx + 1)
+        .filter(l => !l.startsWith('#') && !['subject', 'code', 'download', 'sr', 'no', 'sr.'].includes(l.toLowerCase().replace(/[|]+/g, '').trim()))
       
       let subjectCode = ''
       let subjectName = ''
 
-      for (const line of chunkLines) {
-        const codeMatch = line.match(/\b([A-Z]{2,}\d{5,}|\d{7,})\b/i)
+      // Clean link and pipes from all chunk lines
+      const combinedText = chunkLines.map(l => 
+        l.replace(/\[.*?\]\((https?:\/\/[^\s\)]+)\)/gi, '')
+         .replace(/(https?:\/\/[^\s\)]+)/gi, '')
+         .replace(/Download PDF/gi, '')
+         .replace(/Download/gi, '')
+      ).join(' ')
+
+      const parts = combinedText.split('|').map(p => p.trim()).filter(p => p.length > 0 && !p.match(/^[-:]+$/))
+      
+      for (const part of parts) {
+        const codeMatch = part.match(/\b([A-Z]{2,}\d{5,}|\d{7,})\b/i)
         if (codeMatch) {
           subjectCode = codeMatch[1].toUpperCase()
-          const remainder = line.replace(codeMatch[0], '').replace(/^#?\s*\d+[\.\s\t]+/, '').trim()
+          const remainder = part.replace(codeMatch[0], '').replace(/^#?\s*\d+[\.\s\t]+/, '').trim()
           if (remainder.length > 2 && !subjectName) subjectName = remainder
-        } else if (!line.match(/^\d+$/)) {
+        } else if (!part.match(/^\d+$/) && !['#', 'subject', 'code', 'download'].includes(part.toLowerCase())) {
           if (!subjectName) {
-            subjectName = line
-          } else {
-            subjectName += ' ' + line
+            subjectName = part.replace(/^#?\s*\d+[\.\s\t]+/, '').trim()
           }
         }
+      }
+
+      if (!subjectCode) {
+        const codeMatch = combinedText.match(/\b([A-Z]{2,}\d{5,}|\d{7,})\b/i)
+        if (codeMatch) subjectCode = codeMatch[1].toUpperCase()
+      }
+      if (!subjectName) {
+        let clean = combinedText
+          .replace(/[|]+/g, ' ')
+          .replace(/\b([A-Z]{2,}\d{5,}|\d{7,})\b/gi, '')
+          .replace(/#?\b\d+\b/g, '')
+          .replace(/Download/gi, '')
+          .replace(/\s+/g, ' ')
+          .trim()
+        if (clean.length > 2) subjectName = clean
       }
 
       if (!subjectName && subjectCode) {
@@ -92,7 +114,7 @@ function parsePastedSyllabusTable(rawText: string): BatchDocumentItem[] | null {
 
       if (subjectName || subjectCode || url) {
         const finalTitle = subjectCode ? `${subjectName} (${subjectCode}) Syllabus` : `${subjectName} Syllabus`
-        const sLower = subjectName.toLowerCase()
+        const sLower = (subjectName + ' ' + subjectCode).toLowerCase()
         const isSem5 = sLower.includes('blockchain') || sLower.includes('product development') || sLower.includes('prompt')
         const detectedSem = isSem5 ? '5' : '1'
 
