@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/services/notification_service.dart';
 import '../models/notification_model.dart';
+import 'auth_provider.dart';
 import 'college_provider.dart';
 
 NotificationCategory _mapCategory(String cat) {
