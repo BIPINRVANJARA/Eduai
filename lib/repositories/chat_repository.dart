@@ -71,12 +71,43 @@ class ChatRepository {
 
           final docsRes = await docQuery
               .order('created_at', ascending: false)
-              .limit(30);
+              .limit(50);
 
           final docsList = (docsRes as List?) ?? [];
           if (docsList.isNotEmpty) {
             Map<String, dynamic>? bestDoc;
             int highestScore = 0;
+
+            // Extract query tokens & known acronyms
+            final queryTokens = lower
+                .replaceAll(RegExp(r'[^a-zA-Z0-9\s]'), ' ')
+                .split(RegExp(r'\s+'))
+                .where((t) => t.isNotEmpty)
+                .toSet();
+
+            // Known subject keywords to isolate
+            final knownSubjectKeywords = {
+              'fbc', 'blockchain', 'aipd', 'aipe', 'prompt', 'dbms', 'dsa', 
+              'cn', 'os', 'iot', 'cloud', 'cns', 'se', 'python', 'java', 
+              'wt', 'wad', 'maths', 'math', 'physics', 'chemistry', 'cyber'
+            };
+
+            final activeQuerySubjects = queryTokens.intersection(knownSubjectKeywords);
+
+            // Extract assignment / unit number in query
+            int? queryNumber;
+            final numMatch = RegExp(r'(?:assignment|ass|unit|part|que|sem|semester)?\s*([0-9]+)').allMatches(lower);
+            for (final m in numMatch) {
+              final raw = m.group(1);
+              if (raw != null) {
+                // If it's preceded by assignment or unit or stand-alone
+                final start = m.start;
+                final prefix = lower.substring(0, start).trim();
+                if (!prefix.endsWith('sem') && !prefix.endsWith('semester')) {
+                  queryNumber = int.tryParse(raw);
+                }
+              }
+            }
 
             for (final rawDoc in docsList) {
               final doc = Map<String, dynamic>.from(rawDoc);
@@ -85,26 +116,48 @@ class ChatRepository {
               final title = (doc['title'] ?? '').toString().toLowerCase();
               final category = (doc['category'] ?? '').toString().toLowerCase();
               final dept = (doc['department'] ?? '').toString().toLowerCase();
-              final sem = (doc['semester'] ?? '').toString();
+              final sem = (doc['semester'] ?? '').toString().toLowerCase();
               final subject = (doc['subject_name'] ?? '').toString().toLowerCase();
               final tags = (doc['tags'] as List?)?.map((t) => t.toString().toLowerCase()).toList() ?? [];
 
-              // Tag & Multilingual Match
-              for (final tag in tags) {
-                if (tag.isNotEmpty && (lower.contains(tag) || tag.contains(lower))) {
-                  score += 20;
+              final docSubjectText = '$title $subject ${tags.join(' ')}';
+
+              // === A. STRICT SUBJECT MATCHING ===
+              if (activeQuerySubjects.isNotEmpty) {
+                bool matchedSubject = false;
+                for (final subjKey in activeQuerySubjects) {
+                  if (docSubjectText.contains(subjKey)) {
+                    score += 300;
+                    matchedSubject = true;
+                  }
+                }
+                // If query specified a known subject and this doc doesn't have it -> PENALTY
+                if (!matchedSubject) {
+                  score -= 400;
                 }
               }
 
-              // Category & Intent Match (English + Gujarati + Hindi)
+              // === B. ASSIGNMENT / UNIT NUMBER MATCHING ===
+              if (queryNumber != null) {
+                final docHasNumber = title.contains('$queryNumber') ||
+                    title.contains('assignment $queryNumber') ||
+                    title.contains('unit $queryNumber') ||
+                    tags.any((t) => t.contains('$queryNumber'));
+
+                if (docHasNumber) {
+                  score += 100;
+                } else {
+                  score -= 50;
+                }
+              }
+
+              // === C. CATEGORY & INTENT MATCHING ===
               final isTTIntent = lower.contains('timetable') ||
                   lower.contains('time table') ||
                   lower.contains('schedule') ||
                   lower.contains('tt') ||
                   lower.contains('સમયપત્રક') ||
-                  lower.contains('સમય પત્રક') ||
                   lower.contains('ટાઈમટેબલ') ||
-                  lower.contains('ટાઈમ ટેબલ') ||
                   lower.contains('समय सारणी');
 
               final isLabIntent = lower.contains('lab') ||
@@ -112,9 +165,7 @@ class ChatRepository {
                   lower.contains('practical') ||
                   lower.contains('લેબ') ||
                   lower.contains('મેન્યુઅલ') ||
-                  lower.contains('પ્રાયોગિક') ||
-                  lower.contains('પુસ્તિકા') ||
-                  lower.contains('पुस्तिका');
+                  lower.contains('પુસ્તિકા');
 
               final isAssignIntent = lower.contains('assignment') ||
                   lower.contains('homework') ||
@@ -122,51 +173,54 @@ class ChatRepository {
                   lower.contains('એસાઇનમેન્ટ') ||
                   lower.contains('એસાઈનમેન્ટ') ||
                   lower.contains('સ્વાધ્યાય') ||
-                  lower.contains('હોમવર્ક') ||
-                  lower.contains('fbc');
+                  lower.contains('હોમવર્ક');
 
               final isCircularIntent = lower.contains('circular') ||
                   lower.contains('notice') ||
                   lower.contains('પરિપત્ર') ||
-                  lower.contains('નોટિસ') ||
-                  lower.contains('સૂચના');
+                  lower.contains('નોટિસ');
 
               final isSyllabusIntent = lower.contains('syllabus') ||
                   lower.contains('curriculum') ||
                   lower.contains('અભ્યાસક્રમ');
 
               if (category == 'timetable' && isTTIntent) {
-                score += 25;
+                score += 50;
               } else if (category == 'lab_manual' && isLabIntent) {
-                score += 25;
+                score += 50;
               } else if (category == 'assignment' && isAssignIntent) {
-                score += 25;
+                score += 50;
               } else if (category == 'circular' && isCircularIntent) {
-                score += 25;
+                score += 50;
               } else if (category == 'syllabus' && isSyllabusIntent) {
-                score += 25;
+                score += 50;
               }
 
-              // Title & Subject Match
-              if (title.isNotEmpty && (lower.contains(title) || title.contains(lower))) score += 15;
-              if (subject.isNotEmpty && (lower.contains(subject) || subject.contains(lower))) score += 15;
-
-              // Department Match (boost only if intent or title already matched)
-              if (score > 0 && dept.isNotEmpty) {
-                if ((lower.contains('it') || lower.contains('information')) &&
-                    (dept.contains('information technology') || dept.contains('it'))) {
-                  score += 5;
-                } else if (student != null && student.branch.toLowerCase().contains(dept)) {
-                  score += 2;
+              // === D. TAG & TITLE MATCHING ===
+              for (final tag in tags) {
+                if (tag.isNotEmpty && (lower.contains(tag) || tag.contains(lower))) {
+                  score += 20;
                 }
               }
 
-              // Semester Match
+              if (title.isNotEmpty && (lower.contains(title) || title.contains(lower))) score += 25;
+              if (subject.isNotEmpty && (lower.contains(subject) || subject.contains(lower))) score += 25;
+
+              // === E. DEPARTMENT & SEMESTER MATCHING ===
+              if (score > 0 && dept.isNotEmpty) {
+                if ((lower.contains('it') || lower.contains('information')) &&
+                    (dept.contains('information technology') || dept.contains('it'))) {
+                  score += 10;
+                } else if (student != null && student.branch.toLowerCase().contains(dept)) {
+                  score += 5;
+                }
+              }
+
               if (score > 0 && sem.isNotEmpty) {
                 final semTokens = sem.replaceAll(RegExp(r'[^0-9]'), ' ').split(' ').where((s) => s.trim().isNotEmpty);
                 for (final s in semTokens) {
-                  if (lower.contains('sem $s') || lower.contains('semester $s') || lower.contains('સેમ $s')) {
-                    score += 5;
+                  if (lower.contains('sem $s') || lower.contains('semester $s') || lower.contains('સેમ $s') || lower.contains('sem$s')) {
+                    score += 15;
                   }
                 }
               }
@@ -177,8 +231,8 @@ class ChatRepository {
               }
             }
 
-            // If confident document match found (score >= 20)
-            if (bestDoc != null && highestScore >= 20) {
+            // Confident document match found (score >= 40)
+            if (bestDoc != null && highestScore >= 40) {
               final cat = (bestDoc['category'] ?? 'Document').toString();
               final title = bestDoc['title'] ?? 'Academic Document';
               final dept = bestDoc['department'] ?? '';

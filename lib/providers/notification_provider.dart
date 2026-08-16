@@ -28,11 +28,11 @@ class NotificationNotifier extends StateNotifier<List<NotificationModel>> {
     try {
       final client = Supabase.instance.client;
       final selectedCollege = _ref.read(selectedCollegeProvider);
-      final currentInstId = selectedCollege.id;
+      final currentInstId = selectedCollege.id.trim();
 
       var query = client.from('campus_alerts').select('*');
       if (currentInstId.isNotEmpty) {
-        query = query.eq('created_by', currentInstId);
+        query = query.or('institution_id.eq.$currentInstId,created_by.eq.$currentInstId');
       }
 
       final response = await query.order('created_at', ascending: false);
@@ -55,16 +55,19 @@ class NotificationNotifier extends StateNotifier<List<NotificationModel>> {
 
       state = alerts;
     } catch (e) {
-      state = [];
+      if (kDebugMode) print('Error fetching campus alerts: $e');
     }
   }
 
   void _subscribeToLiveAlerts() {
     try {
       final client = Supabase.instance.client;
+      if (_realtimeChannel != null) {
+        client.removeChannel(_realtimeChannel!);
+      }
 
       _realtimeChannel = client
-          .channel('public:campus_alerts_feed')
+          .channel('public:campus_alerts_feed_${DateTime.now().millisecondsSinceEpoch}')
           .onPostgresChanges(
             event: PostgresChangeEvent.insert,
             schema: 'public',
@@ -74,10 +77,10 @@ class NotificationNotifier extends StateNotifier<List<NotificationModel>> {
               if (row.isEmpty) return;
 
               final selectedCollege = _ref.read(selectedCollegeProvider);
-              final currentInstId = selectedCollege.id;
-              final alertInstId = row['created_by']?.toString() ?? '';
+              final currentInstId = selectedCollege.id.trim();
+              final alertInstId = (row['institution_id'] ?? row['created_by'])?.toString().trim() ?? '';
 
-              // Filter out alerts belonging to other colleges!
+              // Filter out alerts belonging to other colleges
               if (currentInstId.isNotEmpty && alertInstId.isNotEmpty && alertInstId != currentInstId) {
                 return;
               }

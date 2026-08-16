@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/notification_model.dart';
@@ -15,6 +15,7 @@ class NotificationsScreen extends ConsumerStatefulWidget {
 
 class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
   NotificationCategory? _selectedCategory;
+  bool _isRefreshing = false;
 
   IconData _getCategoryIcon(NotificationCategory cat) {
     switch (cat) {
@@ -48,6 +49,13 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
       default:
         return AppColors.primary;
     }
+  }
+
+  Future<void> _handleRefresh() async {
+    setState(() => _isRefreshing = true);
+    HapticFeedback.lightImpact();
+    await ref.read(notificationProvider.notifier).fetchAlerts();
+    if (mounted) setState(() => _isRefreshing = false);
   }
 
   @override
@@ -98,6 +106,21 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
           ],
         ),
         actions: [
+          // Refresh Action Button
+          IconButton(
+            tooltip: 'Refresh Alerts',
+            icon: _isRefreshing
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppColors.primary,
+                    ),
+                  )
+                : const Icon(Icons.refresh_rounded, color: AppColors.textSecondary, size: 22),
+            onPressed: _isRefreshing ? null : _handleRefresh,
+          ),
           if (unreadCount > 0)
             TextButton(
               onPressed: () {
@@ -140,31 +163,55 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
             child: RefreshIndicator(
               color: AppColors.primary,
               backgroundColor: AppColors.surface,
-              onRefresh: () async {
-                await ref.read(notificationProvider.notifier).fetchAlerts();
-              },
+              onRefresh: _handleRefresh,
               child: filteredList.isEmpty
                   ? ListView(
-                      physics: const BouncingScrollPhysics(),
-                      children: const [
-                        SizedBox(height: 120),
+                      physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                      children: [
+                        const SizedBox(height: 100),
                         Center(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.notifications_off_rounded, size: 52, color: AppColors.textMuted),
-                              SizedBox(height: 14),
-                              Text(
-                                'No notifications in this category.',
-                                style: TextStyle(color: AppColors.textSecondary, fontSize: 14, fontWeight: FontWeight.w600),
+                              Container(
+                                padding: const EdgeInsets.all(20),
+                                decoration: BoxDecoration(
+                                  color: AppColors.surface,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: AppColors.cardBorder),
+                                ),
+                                child: const Icon(Icons.notifications_off_rounded, size: 40, color: AppColors.textMuted),
                               ),
+                              const SizedBox(height: 16),
+                              const Text(
+                                'No campus alerts right now',
+                                style: TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(height: 6),
+                              const Text(
+                                'Pull down or tap below to check for new notices',
+                                style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                              ),
+                              const SizedBox(height: 20),
+                              ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.surface,
+                                  foregroundColor: AppColors.primary,
+                                  side: const BorderSide(color: AppColors.primary, width: 1.2),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                                ),
+                                onPressed: _isRefreshing ? null : _handleRefresh,
+                                icon: const Icon(Icons.refresh_rounded, size: 18),
+                                label: const Text('Refresh Alerts', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                              )
                             ],
                           ),
                         ),
                       ],
                     )
                   : ListView.separated(
-                      physics: const BouncingScrollPhysics(),
+                      physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
                       padding: const EdgeInsets.fromLTRB(16, 6, 16, 24),
                       itemCount: filteredList.length,
                       separatorBuilder: (_, __) => const SizedBox(height: 12),
@@ -198,9 +245,9 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                               boxShadow: [
                                 BoxShadow(
                                   color: notif.isRead
-                                      ? Colors.black.withOpacity(0.12)
-                                      : catColor.withOpacity(0.1),
-                                  blurRadius: 14,
+                                      ? Colors.transparent
+                                      : catColor.withOpacity(0.08),
+                                  blurRadius: 16,
                                   offset: const Offset(0, 4),
                                 ),
                               ],
@@ -211,9 +258,9 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                                 Container(
                                   padding: const EdgeInsets.all(10),
                                   decoration: BoxDecoration(
-                                    color: catColor.withOpacity(0.14),
-                                    borderRadius: BorderRadius.circular(14),
-                                    border: Border.all(color: catColor.withOpacity(0.35)),
+                                    color: catColor.withOpacity(0.12),
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: catColor.withOpacity(0.3)),
                                   ),
                                   child: Icon(catIcon, color: catColor, size: 20),
                                 ),
@@ -231,44 +278,29 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                                               style: TextStyle(
                                                 color: AppColors.textPrimary,
                                                 fontWeight: notif.isRead ? FontWeight.w700 : FontWeight.w900,
-                                                fontSize: 14.5,
-                                                letterSpacing: -0.2,
+                                                fontSize: 15,
+                                                letterSpacing: -0.3,
                                               ),
                                             ),
                                           ),
-                                          if (!notif.isRead)
-                                            Container(
-                                              width: 8,
-                                              height: 8,
-                                              decoration: BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                color: catColor,
-                                                boxShadow: [
-                                                  BoxShadow(
-                                                    color: catColor.withOpacity(0.6),
-                                                    blurRadius: 6,
-                                                  ),
-                                                ],
-                                              ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            timeAgo,
+                                            style: const TextStyle(
+                                              color: AppColors.textMuted,
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600,
                                             ),
+                                          ),
                                         ],
                                       ),
-                                      const SizedBox(height: 5),
+                                      const SizedBox(height: 6),
                                       Text(
                                         notif.body,
                                         style: const TextStyle(
                                           color: AppColors.textSecondary,
-                                          fontSize: 12.5,
+                                          fontSize: 13,
                                           height: 1.4,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        timeAgo,
-                                        style: const TextStyle(
-                                          color: AppColors.textMuted,
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w500,
                                         ),
                                       ),
                                     ],
@@ -277,7 +309,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                               ],
                             ),
                           ),
-                        ).animate().fadeIn(duration: 200.ms, delay: (index * 40).ms).slideY(begin: 0.05, end: 0);
+                        );
                       },
                     ),
             ),
@@ -287,40 +319,34 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     );
   }
 
-  Widget _buildFilterChip(String label, NotificationCategory? category) {
-    final isSelected = _selectedCategory == category;
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: GestureDetector(
-        onTap: () => setState(() => _selectedCategory = category),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 250),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-          decoration: BoxDecoration(
-            color: isSelected ? AppColors.primary : AppColors.surface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isSelected ? AppColors.primary : AppColors.cardBorder,
-              width: 1.1,
-            ),
-            boxShadow: isSelected
-                ? [
-                    BoxShadow(
-                      color: AppColors.primary.withOpacity(0.25),
-                      blurRadius: 10,
-                      offset: const Offset(0, 3),
-                    ),
-                  ]
-                : null,
+  Widget _buildFilterChip(String label, NotificationCategory? cat) {
+    final isSelected = _selectedCategory == cat;
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        setState(() {
+          _selectedCategory = cat;
+        });
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        margin: const EdgeInsets.only(right: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primary : AppColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isSelected ? AppColors.primary : AppColors.cardBorder,
+            width: 1,
           ),
-          child: Center(
-            child: Text(
-              label,
-              style: TextStyle(
-                color: isSelected ? AppColors.background : AppColors.textSecondary,
-                fontSize: 12,
-                fontWeight: isSelected ? FontWeight.w900 : FontWeight.w600,
-              ),
+        ),
+        child: Center(
+          child: Text(
+            label,
+            style: TextStyle(
+              color: isSelected ? AppColors.textDark : AppColors.textSecondary,
+              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+              fontSize: 12,
             ),
           ),
         ),
