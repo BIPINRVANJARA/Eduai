@@ -95,17 +95,18 @@ class ChatRepository {
 
             final activeQuerySubjects = queryTokens.intersection(knownSubjectKeywords);
 
-            // Extract assignment / unit number in query
+            // Extract assignment / unit number in query (e.g. "fbc 1 assignment", "assignment 2", "fbc 1")
             int? queryNumber;
-            final numMatch = RegExp(r'(?:assignment|ass|unit|part|que|sem|semester)?\s*([0-9]+)').allMatches(lower);
-            for (final m in numMatch) {
+            final digitMatches = RegExp(r'\b([0-9]+)\b').allMatches(lower);
+            for (final m in digitMatches) {
               final raw = m.group(1);
               if (raw != null) {
-                // If it's preceded by assignment or unit or stand-alone
                 final start = m.start;
                 final prefix = lower.substring(0, start).trim();
-                if (!prefix.endsWith('sem') && !prefix.endsWith('semester')) {
+                // Ignore semester numbers like "sem 5"
+                if (!prefix.endsWith('sem') && !prefix.endsWith('semester') && !prefix.endsWith('સેમ')) {
                   queryNumber = int.tryParse(raw);
+                  break;
                 }
               }
             }
@@ -140,15 +141,18 @@ class ChatRepository {
 
               // === B. ASSIGNMENT / UNIT NUMBER MATCHING ===
               if (queryNumber != null) {
-                final docHasNumber = title.contains('$queryNumber') ||
-                    title.contains('assignment $queryNumber') ||
+                final docHasNumber = title.contains('assignment $queryNumber') ||
+                    title.contains('assignment$queryNumber') ||
                     title.contains('unit $queryNumber') ||
-                    tags.any((t) => t.contains('$queryNumber'));
+                    title.contains(' $queryNumber ') ||
+                    title.contains(' $queryNumber-') ||
+                    title.contains(' $queryNumber -') ||
+                    tags.any((t) => t.contains('assignment $queryNumber') || t.contains('unit $queryNumber') || t == '$queryNumber');
 
                 if (docHasNumber) {
-                  score += 100;
+                  score += 150;
                 } else {
-                  score -= 50;
+                  score -= 100;
                 }
               }
 
