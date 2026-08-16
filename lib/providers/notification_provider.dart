@@ -30,28 +30,34 @@ class NotificationNotifier extends StateNotifier<List<NotificationModel>> {
       final selectedCollege = _ref.read(selectedCollegeProvider);
       final currentInstId = selectedCollege.id.trim();
 
-      var query = client.from('campus_alerts').select('*');
-      if (currentInstId.isNotEmpty) {
-        query = query.or('institution_id.eq.$currentInstId,created_by.eq.$currentInstId');
-      }
-
-      final response = await query.order('created_at', ascending: false);
+      // Query all campus alerts ordered by newest first
+      final response = await client
+          .from('campus_alerts')
+          .select('*')
+          .order('created_at', ascending: false);
 
       final list = (response as List?) ?? [];
-      final alerts = list.map((item) {
-        final row = Map<String, dynamic>.from(item);
-        return NotificationModel(
-          id: row['id']?.toString() ?? UniqueKey().toString(),
-          title: row['title'] ?? 'Campus Alert',
-          body: row['message'] ?? '',
-          timestamp: row['created_at'] != null
-              ? DateTime.tryParse(row['created_at'].toString()) ?? DateTime.now()
-              : DateTime.now(),
-          category: _mapCategory(row['category']?.toString() ?? 'general'),
-          isRead: false,
-          data: row,
-        );
-      }).toList();
+      final alerts = list
+          .map((item) => Map<String, dynamic>.from(item))
+          .where((row) {
+            if (currentInstId.isEmpty) return true;
+            final inst = (row['created_by'] ?? row['institution_id'])?.toString().trim() ?? '';
+            // Match current institution or global campus alerts
+            return inst.isEmpty || inst == currentInstId || inst == 'all' || inst == '6c6e9b83-cabf-4b13-855b-97d2e1461177';
+          })
+          .map((row) {
+            return NotificationModel(
+              id: row['id']?.toString() ?? UniqueKey().toString(),
+              title: row['title'] ?? '📢 Campus Alert',
+              body: row['message'] ?? '',
+              timestamp: row['created_at'] != null
+                  ? DateTime.tryParse(row['created_at'].toString()) ?? DateTime.now()
+                  : DateTime.now(),
+              category: _mapCategory(row['category']?.toString() ?? 'general'),
+              isRead: false,
+              data: row,
+            );
+          }).toList();
 
       state = alerts;
     } catch (e) {
@@ -78,16 +84,16 @@ class NotificationNotifier extends StateNotifier<List<NotificationModel>> {
 
               final selectedCollege = _ref.read(selectedCollegeProvider);
               final currentInstId = selectedCollege.id.trim();
-              final alertInstId = (row['institution_id'] ?? row['created_by'])?.toString().trim() ?? '';
+              final alertInstId = (row['created_by'] ?? row['institution_id'])?.toString().trim() ?? '';
 
               // Filter out alerts belonging to other colleges
-              if (currentInstId.isNotEmpty && alertInstId.isNotEmpty && alertInstId != currentInstId) {
+              if (currentInstId.isNotEmpty && alertInstId.isNotEmpty && alertInstId != currentInstId && alertInstId != '6c6e9b83-cabf-4b13-855b-97d2e1461177') {
                 return;
               }
 
               final newAlert = NotificationModel(
                 id: row['id']?.toString() ?? UniqueKey().toString(),
-                title: row['title'] ?? 'Campus Alert',
+                title: row['title'] ?? '📢 Campus Alert',
                 body: row['message'] ?? '',
                 timestamp: row['created_at'] != null
                     ? DateTime.tryParse(row['created_at'].toString()) ?? DateTime.now()
@@ -136,7 +142,6 @@ class NotificationNotifier extends StateNotifier<List<NotificationModel>> {
 
 final notificationProvider =
     StateNotifierProvider<NotificationNotifier, List<NotificationModel>>((ref) {
-  // Re-fetch alerts whenever the selected college changes!
   ref.watch(selectedCollegeProvider);
   return NotificationNotifier(ref);
 });
