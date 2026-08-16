@@ -1,3 +1,4 @@
+import '../core/services/academic_solver_service.dart';
 import '../core/services/supabase_service.dart';
 import '../models/chat_message_model.dart';
 import '../models/college_model.dart';
@@ -359,7 +360,43 @@ class ChatRepository {
       );
     }
 
-    // 3. Fallback processor
+    // 3. Robust Multi-Turn Document & Assignment Question Solver
+    if (isQuestionAnsweringRequest) {
+      String activeSubject = 'Fundamentals of Blockchain (FBC)';
+      String activeDocTitle = 'Academic Assignment';
+
+      if (conversationHistory != null && conversationHistory.isNotEmpty) {
+        for (final msg in conversationHistory.reversed) {
+          if (msg.payload != null) {
+            final pSubj = msg.payload!['subject']?.toString();
+            final pTitle = msg.payload!['title']?.toString();
+            if (pSubj != null && pSubj.isNotEmpty) activeSubject = pSubj;
+            if (pTitle != null && pTitle.isNotEmpty) activeDocTitle = pTitle;
+            break;
+          }
+        }
+      }
+
+      final String lang = isGujarati ? 'GUJARATI' : 'ENGLISH';
+      final academicAnswer = AcademicSolverService.solveAssignmentQuestion(
+        userText: userText,
+        activeSubject: activeSubject,
+        activeDocumentTitle: activeDocTitle,
+        language: lang,
+      );
+
+      if (academicAnswer != null && academicAnswer.isNotEmpty) {
+        return ChatMessageModel(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          sender: ChatSender.ai,
+          text: academicAnswer,
+          timestamp: DateTime.now(),
+          dataType: ChatDataType.none,
+        );
+      }
+    }
+
+    // 4. Fallback processor
     return processUserMessage(
       userText: userText,
       college: college,
