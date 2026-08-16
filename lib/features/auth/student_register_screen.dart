@@ -301,10 +301,68 @@ class _StudentRegisterScreenState extends ConsumerState<StudentRegisterScreen> {
                   ],
                 ),
               ),
-              const SizedBox(height: 12),
-              const Text(
-                '⏳ Once approved by your college admin, both student and parent can log in.',
-                style: TextStyle(color: AppColors.warning, fontSize: 11, fontWeight: FontWeight.w600),
+              const SizedBox(height: 14),
+
+              // Step 1: Email Confirmation Pill
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.cyanAccent.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppColors.cyanAccent.withOpacity(0.35)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.mark_email_unread_rounded, color: AppColors.cyanAccent, size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Step 1: Confirm Email Address', style: TextStyle(color: AppColors.cyanAccent, fontSize: 12, fontWeight: FontWeight.w800)),
+                          const SizedBox(height: 3),
+                          Text(
+                            'A verification link was sent to ${_studentEmailController.text.trim()}. Please check your email inbox and tap "Confirm email address".',
+                            style: const TextStyle(color: AppColors.textPrimary, fontSize: 11, height: 1.3),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 10),
+
+              // Step 2: College Admin Approval
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.warning.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppColors.warning.withOpacity(0.35)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.hourglass_top_rounded, color: AppColors.warning, size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Step 2: Department / College Approval', style: TextStyle(color: AppColors.warning, fontSize: 12, fontWeight: FontWeight.w800)),
+                          const SizedBox(height: 3),
+                          Text(
+                            'Your application is routed to $_institutionName ($_department). Once verified by the college admin, you can log in.',
+                            style: const TextStyle(color: AppColors.textPrimary, fontSize: 11, height: 1.3),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),

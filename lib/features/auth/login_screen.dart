@@ -62,7 +62,45 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
       context.go('/app');
     } on AuthException catch (e) {
-      if (mounted) {
+      if (!mounted) return;
+      final msg = e.message.toLowerCase();
+      if (msg.contains('email not confirmed') || msg.contains('email_not_confirmed')) {
+        await showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: AppColors.surface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(22),
+              side: const BorderSide(color: AppColors.cyanAccent, width: 1.5),
+            ),
+            title: const Row(
+              children: [
+                Icon(Icons.mark_email_unread_rounded, color: AppColors.cyanAccent, size: 24),
+                SizedBox(width: 10),
+                Text('Confirm Your Email', style: TextStyle(color: AppColors.textPrimary, fontSize: 17, fontWeight: FontWeight.w800)),
+              ],
+            ),
+            content: Text(
+              'A verification link was sent to $identifier.\n\nPlease open your email app and click "Confirm email address" before logging in.',
+              style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, height: 1.4),
+            ),
+            actions: [
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: AppColors.background,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('Okay, I Will Verify', style: TextStyle(fontWeight: FontWeight.w800)),
+                ),
+              ),
+            ],
+          ),
+        );
+      } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(e.message),
