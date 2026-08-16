@@ -1,8 +1,8 @@
 import React, { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../config/supabase'
-import { ShieldCheck } from 'lucide-react'
-import { useAuth } from '../contexts/AuthContext'
+import { ShieldCheck, Building2, Layers } from 'lucide-react'
+import { useAuth, type InstitutionSession } from '../contexts/AuthContext'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -21,7 +21,7 @@ export default function LoginPage() {
     const cleanPassword = password.trim()
 
     try {
-      // 1. Direct Institution Verification from institutions table
+      // 1. Direct Institution Verification from institutions table (Institute Admin)
       const { data: instData, error: instError } = await supabase
         .from('institutions')
         .select('*')
@@ -30,30 +30,64 @@ export default function LoginPage() {
         .maybeSingle()
 
       if (!instError && instData) {
-        // Log in with verified institution credentials
+        // Log in as Full Institute Admin
         setInstitutionSession({
           id: instData.id,
           code: instData.code,
           name: instData.name,
           short_name: instData.short_name,
           admin_email: instData.admin_email
-        })
+        }, 'institute_admin')
         navigate('/ai-copilot')
         return
       }
 
-      // 2. Fallback to Supabase Auth login
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      // 2. Supabase Auth Verification (supports both Institute Admin and Department Admin)
+      const { data: authData, error: signInError } = await supabase.auth.signInWithPassword({
         email: cleanEmail,
         password: cleanPassword,
       })
 
-      if (!signInError) {
+      if (!signInError && authData?.user) {
+        const userMeta = authData.user.user_metadata || {}
+        const isDeptAdmin = Boolean(userMeta.is_dept_admin || userMeta.department)
+        const assignedDept = userMeta.department || null
+        const instId = userMeta.institution_id || '6c6e9b83-cabf-4b13-855b-97d2e1461177'
+
+        // Fetch institution details
+        const { data: matchedInst } = await supabase
+          .from('institutions')
+          .select('*')
+          .eq('id', instId)
+          .maybeSingle()
+
+        const instObj: InstitutionSession = matchedInst ? {
+          id: matchedInst.id,
+          code: matchedInst.code,
+          name: matchedInst.name,
+          short_name: matchedInst.short_name,
+          admin_email: matchedInst.admin_email
+        } : {
+          id: instId,
+          code: '624',
+          name: 'Government Polytechnic Himmatnagar',
+          short_name: 'GPH',
+          admin_email: cleanEmail
+        }
+
+        if (isDeptAdmin && assignedDept) {
+          // Department Admin Mode
+          setInstitutionSession(instObj, 'dept_admin', assignedDept)
+        } else {
+          // Institute Admin Mode
+          setInstitutionSession(instObj, 'institute_admin')
+        }
+
         navigate('/ai-copilot')
         return
       }
 
-      setError('Invalid institution login credentials. Please check your admin email and password.')
+      setError('Invalid login credentials. Please check your admin/HOD email and password.')
     } catch (err: any) {
       setError(`Login failed: ${err.message || 'Server error'}`)
     } finally {
@@ -73,7 +107,24 @@ export default function LoginPage() {
             />
           </div>
           <h1 className="text-3xl font-extrabold text-text-primary tracking-tight mb-1">Eduai</h1>
-          <p className="text-primary text-xs font-bold uppercase tracking-wider">Institution Admin Portal</p>
+          <p className="text-primary text-xs font-bold uppercase tracking-wider">
+            Unified Academic Admin Portal
+          </p>
+          <span className="text-[11px] text-text-muted mt-1 block">
+            Single login for Institute Admins & Department Coordinators
+          </span>
+        </div>
+
+        {/* Unified Role Badges */}
+        <div className="grid grid-cols-2 gap-2 mb-6 bg-surface-light p-1.5 rounded-2xl border border-card-border">
+          <div className="flex items-center justify-center gap-1.5 py-1.5 text-[11px] font-semibold text-primary">
+            <Building2 size={13} />
+            <span>Institute Admin</span>
+          </div>
+          <div className="flex items-center justify-center gap-1.5 py-1.5 text-[11px] font-semibold text-cyan-400">
+            <Layers size={13} />
+            <span>Department Admin</span>
+          </div>
         </div>
 
         {error && (
@@ -93,19 +144,28 @@ export default function LoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               className="w-full bg-surface-light border border-card-border rounded-xl px-4 py-3 text-text-primary text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-mono"
               required
-              placeholder="admin@college.ac.in"
+              placeholder="admin@college.ac.in or hod.it@gph.edu.in"
             />
           </div>
           
           <div>
-            <label className="block text-xs font-semibold text-text-secondary mb-2">
-              Admin Password
-            </label>
+            <div className="flex justify-between items-center mb-2">
+              <label className="text-xs font-semibold text-text-secondary">
+                Password
+              </label>
+              <a 
+                href="#forgot" 
+                onClick={(e) => { e.preventDefault(); alert("Please contact your College Administrator or Super Admin to reset credentials."); }}
+                className="text-xs text-primary hover:underline"
+              >
+                Forgot password?
+              </a>
+            </div>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-surface-light border border-card-border rounded-xl px-4 py-3 text-text-primary text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-mono"
+              className="w-full bg-surface-light border border-card-border rounded-xl px-4 py-3 text-text-primary text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
               required
               placeholder="••••••••"
             />
@@ -114,19 +174,19 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-primary hover:bg-primary/90 text-background font-bold py-3 px-4 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary/20 cursor-pointer text-sm"
+            className="w-full bg-primary hover:bg-primary/90 text-background font-bold py-3.5 px-4 rounded-xl transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed mt-2 cursor-pointer"
           >
-            {loading ? 'Verifying Institution...' : 'Sign In to Institution Portal'}
+            <ShieldCheck size={18} />
+            {loading ? 'Verifying Credentials...' : 'Sign In to Admin Portal'}
           </button>
         </form>
 
-        <div className="mt-6 pt-5 border-t border-card-border text-center">
-          <Link
-            to="/super-admin"
-            className="text-xs text-text-muted hover:text-primary inline-flex items-center gap-1.5 transition-colors font-medium"
-          >
-            <ShieldCheck size={14} className="text-primary" />
-            Platform Owner? <strong>Go to Super Admin Portal →</strong>
+        <div className="mt-8 pt-6 border-t border-card-border flex items-center justify-between text-xs text-text-muted">
+          <Link to="/" className="hover:text-text-primary transition-colors">
+            ← Back to Home
+          </Link>
+          <Link to="/super-admin" className="text-primary hover:underline font-medium">
+            Super Admin Portal →
           </Link>
         </div>
       </div>
