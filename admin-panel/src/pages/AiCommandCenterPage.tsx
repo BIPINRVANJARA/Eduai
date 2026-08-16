@@ -495,7 +495,7 @@ export default function AiCommandCenterPage() {
           file_url: fileUrl,
           file_name: fileName,
           file_size: fileSize,
-          uploaded_by: user?.id || 'admin',
+          uploaded_by: user?.id || null,
           institution_id: currentInstId
         })
         .select()
@@ -575,7 +575,7 @@ export default function AiCommandCenterPage() {
             file_url: fileUrl,
             file_name: fileName,
             file_size: fileSize,
-            uploaded_by: user?.id || 'admin',
+            uploaded_by: user?.id || null,
             institution_id: currentInstId
           })
       }
@@ -652,7 +652,7 @@ export default function AiCommandCenterPage() {
             file_url: fileUrl,
             file_name: fileName,
             file_size: fileSize,
-            uploaded_by: user?.id || 'admin',
+            uploaded_by: user?.id || null,
             institution_id: currentInstId
           })
           .select()
