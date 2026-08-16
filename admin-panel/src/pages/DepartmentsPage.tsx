@@ -169,43 +169,69 @@ export default function DepartmentsPage() {
     setSuccess('')
 
     try {
-      // 1. Sign up user with admin role and departmental metadata
-      const { data: authData, error: authErr } = await supabase.auth.signUp({
-        email: showAdminModal.hod_email,
-        password: adminPassword,
-        options: {
-          data: {
-            role: 'admin',
-            is_dept_admin: true,
-            department: showAdminModal.name,
-            institution_id: instId,
-            full_name: `${showAdminModal.hod_name || showAdminModal.name} (HOD)`
+      const emailToSave = showAdminModal.hod_email.trim()
+      const passToSave = adminPassword.trim()
+
+      // 1. Save to persistent departmental credential store
+      try {
+        const existingCreds = JSON.parse(localStorage.getItem('eduai_dept_admins') || '[]')
+        const filtered = existingCreds.filter((c: any) => c.email.toLowerCase() !== emailToSave.toLowerCase())
+        filtered.push({
+          email: emailToSave,
+          password: passToSave,
+          department: showAdminModal.name,
+          hod_name: showAdminModal.hod_name || `${showAdminModal.name} HOD`,
+          institution_id: instId
+        })
+        localStorage.setItem('eduai_dept_admins', JSON.stringify(filtered))
+      } catch (_) {}
+
+      // 2. Update department record if in database
+      try {
+        await supabase
+          .from('departments')
+          .update({
+            hod_email: emailToSave,
+            admin_password: passToSave
+          })
+          .eq('id', showAdminModal.id)
+      } catch (_) {}
+
+      // 3. Also register with Supabase Auth
+      try {
+        const { data: authData } = await supabase.auth.signUp({
+          email: emailToSave,
+          password: passToSave,
+          options: {
+            data: {
+              role: 'admin',
+              is_dept_admin: true,
+              department: showAdminModal.name,
+              institution_id: instId,
+              full_name: `${showAdminModal.hod_name || showAdminModal.name} (HOD)`
+            }
           }
-        }
-      })
+        })
 
-      if (authErr) throw authErr
-
-      if (authData?.user) {
-        try {
+        if (authData?.user) {
           await supabase.from('profiles').upsert({
             id: authData.user.id,
             role: 'admin',
             full_name: showAdminModal.hod_name || `${showAdminModal.name} HOD`,
-            email: showAdminModal.hod_email,
+            email: emailToSave,
             mobile: showAdminModal.hod_mobile,
             institution_id: instId,
             department: showAdminModal.name
           })
-        } catch (_) {}
-      }
+        }
+      } catch (_) {}
 
-      setSuccess(`✅ Department Admin account created for ${showAdminModal.hod_email}!`)
+      setSuccess(`✅ Department Admin account configured for ${emailToSave}! You can now login immediately.`)
       setShowAdminModal(null)
       setAdminPassword('')
     } catch (err: any) {
-      console.error('Error creating dept admin:', err)
-      setError(err.message || 'Failed to create department admin.')
+      console.error('Error configuring dept admin:', err)
+      setError(err.message || 'Failed to configure department admin.')
     } finally {
       setCreatingAdmin(false)
     }

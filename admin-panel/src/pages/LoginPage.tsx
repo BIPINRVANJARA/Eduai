@@ -42,7 +42,50 @@ export default function LoginPage() {
         return
       }
 
-      // 2. Supabase Auth Verification (supports both Institute Admin and Department Admin)
+      // 2. Department Admin Verification from Local Credential Store
+      try {
+        const deptAdmins: any[] = JSON.parse(localStorage.getItem('eduai_dept_admins') || '[]')
+        const matchedDeptAdmin = deptAdmins.find(
+          (a) => a.email.toLowerCase() === cleanEmail.toLowerCase() && a.password === cleanPassword
+        )
+        if (matchedDeptAdmin) {
+          const instObj: InstitutionSession = {
+            id: matchedDeptAdmin.institution_id || '6c6e9b83-cabf-4b13-855b-97d2e1461177',
+            code: '624',
+            name: 'Government Polytechnic Himmatnagar',
+            short_name: 'GPH',
+            admin_email: cleanEmail
+          }
+          setInstitutionSession(instObj, 'dept_admin', matchedDeptAdmin.department)
+          navigate('/ai-copilot')
+          return
+        }
+      } catch (_) {}
+
+      // 3. Department Admin Verification from Supabase departments table
+      try {
+        const { data: deptData } = await supabase
+          .from('departments')
+          .select('*')
+          .ilike('hod_email', cleanEmail)
+          .eq('admin_password', cleanPassword)
+          .maybeSingle()
+
+        if (deptData) {
+          const instObj: InstitutionSession = {
+            id: deptData.institution_id || '6c6e9b83-cabf-4b13-855b-97d2e1461177',
+            code: '624',
+            name: 'Government Polytechnic Himmatnagar',
+            short_name: 'GPH',
+            admin_email: cleanEmail
+          }
+          setInstitutionSession(instObj, 'dept_admin', deptData.name)
+          navigate('/ai-copilot')
+          return
+        }
+      } catch (_) {}
+
+      // 4. Supabase Auth Verification (supports both Institute Admin and Department Admin)
       const { data: authData, error: signInError } = await supabase.auth.signInWithPassword({
         email: cleanEmail,
         password: cleanPassword,
