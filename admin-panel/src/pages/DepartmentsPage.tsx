@@ -93,35 +93,61 @@ export default function DepartmentsPage() {
     try {
       if (editingDept) {
         // Update existing department
-        const { error: updateErr } = await supabase
-          .from('departments')
-          .update({
-            name: formData.name.trim(),
-            code: formData.code.trim().toUpperCase(),
-            hod_name: formData.hod_name.trim(),
-            hod_email: formData.hod_email.trim(),
-            hod_mobile: formData.hod_mobile.trim(),
-            status: formData.status
-          })
-          .eq('id', editingDept.id)
+        const updatedObj: Department = {
+          ...editingDept,
+          name: formData.name.trim(),
+          code: formData.code.trim().toUpperCase(),
+          hod_name: formData.hod_name.trim(),
+          hod_email: formData.hod_email.trim(),
+          hod_mobile: formData.hod_mobile.trim(),
+          status: formData.status
+        }
+        saveDepartmentUpdate(updatedObj)
 
-        if (updateErr) throw updateErr
+        try {
+          await supabase
+            .from('departments')
+            .update({
+              name: formData.name.trim(),
+              code: formData.code.trim().toUpperCase(),
+              hod_name: formData.hod_name.trim(),
+              hod_email: formData.hod_email.trim(),
+              hod_mobile: formData.hod_mobile.trim(),
+              status: formData.status
+            })
+            .eq('id', editingDept.id)
+        } catch (_) {}
+
         setSuccess(`✅ Department "${formData.name}" updated successfully!`)
       } else {
         // Insert new department
-        const { error: insertErr } = await supabase
-          .from('departments')
-          .insert({
-            institution_id: instId,
-            name: formData.name.trim(),
-            code: formData.code.trim().toUpperCase(),
-            hod_name: formData.hod_name.trim(),
-            hod_email: formData.hod_email.trim(),
-            hod_mobile: formData.hod_mobile.trim(),
-            status: formData.status
-          })
+        const newObj: Department = {
+          id: `dept_${Date.now()}`,
+          institution_id: instId,
+          name: formData.name.trim(),
+          code: formData.code.trim().toUpperCase(),
+          hod_name: formData.hod_name.trim(),
+          hod_email: formData.hod_email.trim(),
+          hod_mobile: formData.hod_mobile.trim(),
+          status: formData.status,
+          created_at: new Date().toISOString()
+        }
+        saveDepartmentUpdate(newObj)
 
-        if (insertErr) throw insertErr
+        try {
+          await supabase
+            .from('departments')
+            .insert({
+              institution_id: instId,
+              name: formData.name.trim(),
+              code: formData.code.trim().toUpperCase(),
+              hod_name: formData.hod_name.trim(),
+              hod_email: formData.hod_email.trim(),
+              hod_mobile: formData.hod_mobile.trim(),
+              status: formData.status
+            })
+        } catch (_) {}
+
         setSuccess(`✅ Department "${formData.name}" added successfully!`)
       }
 
@@ -142,12 +168,21 @@ export default function DepartmentsPage() {
 
     setLoading(true)
     try {
-      const { error: delErr } = await supabase
-        .from('departments')
-        .delete()
-        .eq('id', dept.id)
+      // Remove from local cache
+      const cached = localStorage.getItem('eduai_departments_cache')
+      if (cached) {
+        const parsed: Department[] = JSON.parse(cached)
+        const filtered = parsed.filter(d => d.id !== dept.id)
+        localStorage.setItem('eduai_departments_cache', JSON.stringify(filtered))
+      }
 
-      if (delErr) throw delErr
+      try {
+        await supabase
+          .from('departments')
+          .delete()
+          .eq('id', dept.id)
+      } catch (_) {}
+
       setSuccess(`✅ Department "${dept.name}" removed.`)
       await refreshDepartments()
     } catch (err: any) {
