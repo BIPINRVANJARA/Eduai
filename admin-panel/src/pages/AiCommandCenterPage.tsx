@@ -115,8 +115,20 @@ function parsePastedSyllabusTable(rawText: string): BatchDocumentItem[] | null {
       if (subjectName || subjectCode || url) {
         const finalTitle = subjectCode ? `${subjectName} (${subjectCode}) Syllabus` : `${subjectName} Syllabus`
         const sLower = (subjectName + ' ' + subjectCode).toLowerCase()
-        const isSem5 = sLower.includes('blockchain') || sLower.includes('product development') || sLower.includes('prompt')
-        const detectedSem = isSem5 ? '5' : '1'
+        let detectedSem = '1'
+        if (subjectCode.startsWith('DI02') || sLower.includes('sem 2') || sLower.includes('semester 2')) {
+          detectedSem = '2'
+        } else if (subjectCode.startsWith('DI03') || sLower.includes('sem 3') || sLower.includes('semester 3')) {
+          detectedSem = '3'
+        } else if (subjectCode.startsWith('DI04') || sLower.includes('sem 4') || sLower.includes('semester 4')) {
+          detectedSem = '4'
+        } else if (subjectCode.startsWith('DI05') || sLower.includes('sem 5') || sLower.includes('semester 5') || sLower.includes('blockchain') || sLower.includes('product development')) {
+          detectedSem = '5'
+        } else if (subjectCode.startsWith('DI06') || sLower.includes('sem 6') || sLower.includes('semester 6')) {
+          detectedSem = '6'
+        } else if (subjectCode.startsWith('DI01') || sLower.includes('sem 1') || sLower.includes('semester 1')) {
+          detectedSem = '1'
+        }
 
         const tags = [
           sLower,
