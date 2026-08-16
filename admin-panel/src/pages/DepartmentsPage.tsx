@@ -18,7 +18,7 @@ import { useAuth } from '../contexts/AuthContext'
 import type { Department } from '../lib/types'
 
 export default function DepartmentsPage() {
-  const { institution, departments, refreshDepartments, setSelectedDepartment } = useAuth()
+  const { institution, departments, refreshDepartments, setSelectedDepartment, switchToDepartmentAdmin } = useAuth()
   
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -367,14 +367,25 @@ export default function DepartmentsPage() {
 
             {/* Actions Bar */}
             <div className="border-t border-card-border pt-3 flex items-center justify-between gap-2">
-              <button
-                onClick={() => {
-                  setSelectedDepartment(dept.name)
-                }}
-                className="text-xs font-semibold text-primary hover:underline flex items-center gap-1"
-              >
-                <Layers size={13} /> View Dept Records
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setSelectedDepartment(dept.name)
+                  }}
+                  className="text-xs font-semibold text-primary hover:underline flex items-center gap-1"
+                >
+                  <Layers size={13} /> View
+                </button>
+                <button
+                  onClick={() => {
+                    switchToDepartmentAdmin(dept.name, dept.hod_email)
+                  }}
+                  title="Switch active session into this department's admin mode"
+                  className="text-[11px] bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 px-2 py-0.5 rounded-lg font-bold hover:bg-cyan-500/25 transition-all flex items-center gap-1"
+                >
+                  <Shield size={12} /> Log In as {dept.code} Admin
+                </button>
+              </div>
 
               <div className="flex items-center gap-1">
                 <button

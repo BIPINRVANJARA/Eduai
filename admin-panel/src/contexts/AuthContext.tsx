@@ -30,6 +30,8 @@ interface AuthContextType {
   setSelectedDepartment: (dept: string) => void
   refreshDepartments: () => Promise<void>
   setInstitutionSession: (inst: InstitutionSession, role?: AdminRole, dept?: string) => void
+  switchToDepartmentAdmin: (deptName: string, email?: string) => void
+  switchToInstituteAdmin: () => void
   signOut: () => Promise<void>
 }
 
@@ -55,6 +57,8 @@ const AuthContext = createContext<AuthContextType>({
   setSelectedDepartment: () => {},
   refreshDepartments: async () => {},
   setInstitutionSession: () => {},
+  switchToDepartmentAdmin: () => {},
+  switchToInstituteAdmin: () => {},
   signOut: async () => {},
 })
 
@@ -233,6 +237,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setSession({ user: mockUser })
   }
 
+  const switchToDepartmentAdmin = (deptName: string, email?: string) => {
+    if (!institution) return
+    const instObj = { ...institution }
+    if (email) instObj.admin_email = email
+    setInstitutionSession(instObj, 'dept_admin', deptName)
+  }
+
+  const switchToInstituteAdmin = () => {
+    if (!institution) return
+    setInstitutionSession(institution, 'institute_admin')
+  }
+
   const signOut = async () => {
     sessionStorage.removeItem('eduai_inst_session')
     sessionStorage.removeItem('eduai_admin_role')
@@ -260,6 +276,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSelectedDepartment,
       refreshDepartments,
       setInstitutionSession,
+      switchToDepartmentAdmin,
+      switchToInstituteAdmin,
       signOut
     }}>
       {children}

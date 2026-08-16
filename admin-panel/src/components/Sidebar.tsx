@@ -17,7 +17,7 @@ import { useAuth } from '../contexts/AuthContext'
 
 export default function Sidebar() {
   const location = useLocation()
-  const { signOut, institution, assignedDepartment, isDeptAdmin } = useAuth()
+  const { signOut, institution, assignedDepartment, isDeptAdmin, switchToInstituteAdmin } = useAuth()
 
   const navItems = [
     { icon: Bot, label: 'AI Command Center', path: '/ai-copilot', highlight: true },
@@ -52,7 +52,7 @@ export default function Sidebar() {
         </div>
 
         {/* Role & Scope Badge */}
-        <div className="mt-3 bg-surface-light p-2 rounded-xl border border-card-border/80 text-[11px] space-y-1">
+        <div className="mt-3 bg-surface-light p-2.5 rounded-xl border border-card-border/80 text-[11px] space-y-1.5">
           <div className="flex items-center justify-between">
             <span className="text-text-muted font-medium">Role:</span>
             <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
@@ -68,6 +68,14 @@ export default function Sidebar() {
               <ShieldAlert size={12} className="text-cyan-400 shrink-0" />
               <span className="truncate">{assignedDepartment}</span>
             </div>
+          )}
+          {isDeptAdmin && (
+            <button
+              onClick={switchToInstituteAdmin}
+              className="w-full mt-1.5 py-1 px-2 rounded-lg bg-primary/15 hover:bg-primary/25 text-primary border border-primary/30 text-[10px] font-bold flex items-center justify-center gap-1 transition-all"
+            >
+              🔄 Switch to Institute Admin
+            </button>
           )}
         </div>
       </div>
