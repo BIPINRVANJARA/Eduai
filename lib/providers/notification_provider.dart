@@ -28,7 +28,12 @@ class NotificationNotifier extends StateNotifier<List<NotificationModel>> {
     try {
       final client = Supabase.instance.client;
       final selectedCollege = _ref.read(selectedCollegeProvider);
-      final currentInstId = selectedCollege.id.trim();
+      final authState = _ref.read(authProvider);
+      final currentInstId = (authState.student?.collegeId.isNotEmpty == true
+              ? authState.student!.collegeId
+              : selectedCollege.id)
+          .trim();
+      final studentDept = authState.student?.branch.toLowerCase() ?? '';
 
       // Query all campus alerts ordered by newest first
       final response = await client
@@ -42,8 +47,18 @@ class NotificationNotifier extends StateNotifier<List<NotificationModel>> {
           .where((row) {
             if (currentInstId.isEmpty) return true;
             final inst = (row['created_by'] ?? row['institution_id'])?.toString().trim() ?? '';
-            // Match current institution or global campus alerts
-            return inst.isEmpty || inst == currentInstId || inst == 'all' || inst == '6c6e9b83-cabf-4b13-855b-97d2e1461177';
+            // Match strictly the active college or global 'all' broadcast
+            final matchesInst = inst == currentInstId || inst == 'all';
+            if (!matchesInst) return false;
+
+            // Check department scoping if specified
+            final alertDept = (row['department'] ?? 'All').toString().toLowerCase();
+            if (alertDept != 'all' && alertDept != 'general' && studentDept.isNotEmpty) {
+              if (!studentDept.contains(alertDept) && !alertDept.contains(studentDept)) {
+                return false;
+              }
+            }
+            return true;
           })
           .map((row) {
             return NotificationModel(
@@ -83,11 +98,15 @@ class NotificationNotifier extends StateNotifier<List<NotificationModel>> {
               if (row.isEmpty) return;
 
               final selectedCollege = _ref.read(selectedCollegeProvider);
-              final currentInstId = selectedCollege.id.trim();
+              final authState = _ref.read(authProvider);
+              final currentInstId = (authState.student?.collegeId.isNotEmpty == true
+                      ? authState.student!.collegeId
+                      : selectedCollege.id)
+                  .trim();
               final alertInstId = (row['created_by'] ?? row['institution_id'])?.toString().trim() ?? '';
 
-              // Filter out alerts belonging to other colleges
-              if (currentInstId.isNotEmpty && alertInstId.isNotEmpty && alertInstId != currentInstId && alertInstId != '6c6e9b83-cabf-4b13-855b-97d2e1461177') {
+              // Filter out alerts belonging to other colleges strictly
+              if (currentInstId.isNotEmpty && alertInstId.isNotEmpty && alertInstId != currentInstId && alertInstId != 'all') {
                 return;
               }
 
