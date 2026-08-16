@@ -29,6 +29,7 @@ interface AuthContextType {
   loading: boolean
   setSelectedDepartment: (dept: string) => void
   refreshDepartments: () => Promise<void>
+  saveDepartmentUpdate: (updatedDept: Department) => void
   setInstitutionSession: (inst: InstitutionSession, role?: AdminRole, dept?: string) => void
   switchToDepartmentAdmin: (deptName: string, email?: string) => void
   switchToInstituteAdmin: () => void
@@ -56,6 +57,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   setSelectedDepartment: () => {},
   refreshDepartments: async () => {},
+  saveDepartmentUpdate: () => {},
   setInstitutionSession: () => {},
   switchToDepartmentAdmin: () => {},
   switchToInstituteAdmin: () => {},
@@ -76,6 +78,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchDepartments = async (instId: string) => {
     try {
+      // 1. Check local cache first for custom configured departments & HOD emails
+      const cached = localStorage.getItem('eduai_departments_cache')
+      let initialList = DEFAULT_DEPARTMENTS
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached)
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            initialList = parsed
+          }
+        } catch (_) {}
+      }
+
       const { data, error } = await supabase
         .from('departments')
         .select('*')
@@ -84,12 +98,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (!error && data && data.length > 0) {
         setDepartments(data)
+        localStorage.setItem('eduai_departments_cache', JSON.stringify(data))
       } else {
-        setDepartments(DEFAULT_DEPARTMENTS)
+        setDepartments(initialList)
       }
     } catch {
+      const cached = localStorage.getItem('eduai_departments_cache')
+      if (cached) {
+        try {
+          setDepartments(JSON.parse(cached))
+          return
+        } catch (_) {}
+      }
       setDepartments(DEFAULT_DEPARTMENTS)
     }
+  }
+
+  const saveDepartmentUpdate = (updatedDept: Department) => {
+    setDepartments(prev => {
+      const next = prev.map(d => d.id === updatedDept.id ? updatedDept : d)
+      localStorage.setItem('eduai_departments_cache', JSON.stringify(next))
+      return next
+    })
   }
 
   const refreshDepartments = async () => {
@@ -275,6 +305,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loading,
       setSelectedDepartment,
       refreshDepartments,
+      saveDepartmentUpdate,
       setInstitutionSession,
       switchToDepartmentAdmin,
       switchToInstituteAdmin,

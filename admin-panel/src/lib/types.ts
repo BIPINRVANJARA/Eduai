@@ -18,6 +18,7 @@ export interface Department {
   hod_name: string;
   hod_email: string;
   hod_mobile: string;
+  admin_password?: string;
   status: 'active' | 'inactive';
   student_count?: number;
   created_at: string;

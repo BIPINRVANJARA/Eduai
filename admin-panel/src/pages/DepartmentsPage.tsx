@@ -18,7 +18,7 @@ import { useAuth } from '../contexts/AuthContext'
 import type { Department } from '../lib/types'
 
 export default function DepartmentsPage() {
-  const { institution, departments, refreshDepartments, setSelectedDepartment, switchToDepartmentAdmin } = useAuth()
+  const { institution, departments, refreshDepartments, setSelectedDepartment, switchToDepartmentAdmin, saveDepartmentUpdate } = useAuth()
   
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -172,7 +172,15 @@ export default function DepartmentsPage() {
       const emailToSave = showAdminModal.hod_email.trim()
       const passToSave = adminPassword.trim()
 
-      // 1. Save to persistent departmental credential store
+      // 1. Update local department state so the card and app immediately update
+      const updatedDept: Department = {
+        ...showAdminModal,
+        hod_email: emailToSave,
+        admin_password: passToSave
+      }
+      saveDepartmentUpdate(updatedDept)
+
+      // 2. Save to persistent departmental credential store
       try {
         const existingCreds = JSON.parse(localStorage.getItem('eduai_dept_admins') || '[]')
         const filtered = existingCreds.filter((c: any) => c.email.toLowerCase() !== emailToSave.toLowerCase())
@@ -186,7 +194,7 @@ export default function DepartmentsPage() {
         localStorage.setItem('eduai_dept_admins', JSON.stringify(filtered))
       } catch (_) {}
 
-      // 2. Update department record if in database
+      // 3. Update department record if in database
       try {
         await supabase
           .from('departments')
@@ -197,7 +205,7 @@ export default function DepartmentsPage() {
           .eq('id', showAdminModal.id)
       } catch (_) {}
 
-      // 3. Also register with Supabase Auth
+      // 4. Also register with Supabase Auth
       try {
         const { data: authData } = await supabase.auth.signUp({
           email: emailToSave,
@@ -226,7 +234,7 @@ export default function DepartmentsPage() {
         }
       } catch (_) {}
 
-      setSuccess(`✅ Department Admin account configured for ${emailToSave}! You can now login immediately.`)
+      setSuccess(`✅ Password updated! Department Admin account configured for ${emailToSave}.`)
       setShowAdminModal(null)
       setAdminPassword('')
     } catch (err: any) {
