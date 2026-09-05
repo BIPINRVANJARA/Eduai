@@ -127,34 +127,93 @@ class SupabaseService {
     try {
       String databaseContext = "";
 
-      // 1. Fetch live academic documents & circulars for THIS institution only
+      // 1. RAG: Full-Text Search on document_chunks via Supabase RPC
       if (client != null) {
         try {
           final instId = (institutionId?.isNotEmpty == true
               ? institutionId
               : (student?.collegeId.isNotEmpty == true ? student!.collegeId : ''))?.trim();
 
-          var docQuery = client!
-              .from('documents')
-              .select('id, title, category, department, semester, subject_name, tags, description, content_summary, file_url, institution_id');
+          // Primary: Search document chunks using PostgreSQL full-text search
+          bool ragChunksFound = false;
+          try {
+            final chunksRes = await client!.rpc('search_document_chunks', params: {
+              'query_text': userText,
+              'match_count': 8,
+              'filter_institution_id': (instId != null && instId.isNotEmpty) ? instId : null,
+              'filter_department': student?.department,
+            });
 
-          if (instId != null && instId.isNotEmpty) {
-            docQuery = docQuery.eq('institution_id', instId);
+            if (chunksRes != null && (chunksRes as List).isNotEmpty) {
+              ragChunksFound = true;
+              databaseContext += "\n--- RELEVANT DOCUMENT CONTENT (Retrieved via RAG Search) ---\n";
+              
+              // Group chunks by document_id for cleaner context
+              final Map<String, List<Map<String, dynamic>>> groupedChunks = {};
+              for (final chunk in chunksRes) {
+                final docId = chunk['document_id'] as String;
+                groupedChunks.putIfAbsent(docId, () => []);
+                groupedChunks[docId]!.add(chunk);
+              }
+
+              // Fetch parent document titles for attribution
+              final docIds = groupedChunks.keys.toList();
+              final docsMetaRes = await client!
+                  .from('documents')
+                  .select('id, title, category, subject_name, file_url')
+                  .inFilter('id', docIds);
+
+              final Map<String, Map<String, dynamic>> docsMeta = {};
+              for (final doc in (docsMetaRes as List)) {
+                docsMeta[doc['id']] = doc;
+              }
+
+              for (final entry in groupedChunks.entries) {
+                final meta = docsMeta[entry.key];
+                final docTitle = meta?['title'] ?? 'Unknown Document';
+                final docCategory = meta?['category'] ?? 'document';
+                final subject = entry.value.first['subject_name'] ?? meta?['subject_name'] ?? '';
+                
+                databaseContext += "\n📄 SOURCE: \"$docTitle\" (${docCategory.toString().toUpperCase()})";
+                if (subject.toString().isNotEmpty) databaseContext += " | Subject: $subject";
+                databaseContext += "\n[DOC_ID:${entry.key}]\n";
+                
+                // Sort chunks by chunk_index for coherence
+                entry.value.sort((a, b) => (a['chunk_index'] as int).compareTo(b['chunk_index'] as int));
+                for (final chunk in entry.value) {
+                  databaseContext += "---\n${chunk['chunk_content']}\n";
+                }
+                databaseContext += "\n";
+              }
+            }
+          } catch (rpcErr) {
+            if (kDebugMode) print('RAG chunk search RPC error (falling back to metadata): $rpcErr');
           }
 
-          final docsRes = await docQuery
-              .order('created_at', ascending: false)
-              .limit(20);
+          // Fallback: If no RAG chunks found, use legacy document metadata listing
+          if (!ragChunksFound) {
+            var docQuery = client!
+                .from('documents')
+                .select('id, title, category, department, semester, subject_name, tags, description, content_summary, file_url, institution_id');
 
-          if ((docsRes as List).isNotEmpty) {
-            databaseContext += "\n--- Official Uploaded Academic Documents in Campus Repository ---\n";
-            for (final doc in docsRes) {
-              final tagsStr = doc['tags'] != null ? (doc['tags'] as List).join(', ') : '';
-              databaseContext += "• [DOC_ID:${doc['id']}] ${doc['title']}\n"
-                  "  Category: ${doc['category']}, Dept: ${doc['department'] ?? 'General'}, Sem: ${doc['semester'] ?? 'All'}\n"
-                  "  Subject: ${doc['subject_name'] ?? 'General'}\n"
-                  "  Tags: $tagsStr\n"
-                  "  Summary: ${doc['content_summary'] ?? doc['description'] ?? 'Official document'}\n\n";
+            if (instId != null && instId.isNotEmpty) {
+              docQuery = docQuery.eq('institution_id', instId);
+            }
+
+            final docsRes = await docQuery
+                .order('created_at', ascending: false)
+                .limit(20);
+
+            if ((docsRes as List).isNotEmpty) {
+              databaseContext += "\n--- Official Uploaded Academic Documents in Campus Repository ---\n";
+              for (final doc in docsRes) {
+                final tagsStr = doc['tags'] != null ? (doc['tags'] as List).join(', ') : '';
+                databaseContext += "• [DOC_ID:${doc['id']}] ${doc['title']}\n"
+                    "  Category: ${doc['category']}, Dept: ${doc['department'] ?? 'General'}, Sem: ${doc['semester'] ?? 'All'}\n"
+                    "  Subject: ${doc['subject_name'] ?? 'General'}\n"
+                    "  Tags: $tagsStr\n"
+                    "  Summary: ${doc['content_summary'] ?? doc['description'] ?? 'Official document'}\n\n";
+              }
             }
           }
         } catch (e) {
@@ -308,26 +367,39 @@ CRITICAL INSTRUCTIONS:
         'content': userText,
       });
 
-      final response = await http.post(
-        Uri.parse('https://api.groq.com/openai/v1/chat/completions'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $groqApiKey',
-        },
-        body: jsonEncode({
-          'model': 'openai/gpt-oss-120b',
-          'messages': messagesPayload,
-          'temperature': 0.3,
-          'max_tokens': 1200,
-        }),
-      );
+      final modelsToTry = [
+        'openai/gpt-oss-120b',
+        'llama-3.3-70b-versatile',
+        'llama-3.1-70b-versatile',
+        'llama-3.1-8b-instant'
+      ];
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final content = data['choices'][0]['message']['content'] as String;
-        return content.trim();
-      } else {
-        if (kDebugMode) print('Groq API status ${response.statusCode}: ${response.body}');
+      for (final modelName in modelsToTry) {
+        try {
+          final response = await http.post(
+            Uri.parse('https://api.groq.com/openai/v1/chat/completions'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $groqApiKey',
+            },
+            body: jsonEncode({
+              'model': modelName,
+              'messages': messagesPayload,
+              'temperature': 0.3,
+              'max_tokens': 1200,
+            }),
+          );
+
+          if (response.statusCode == 200) {
+            final data = jsonDecode(response.body);
+            final content = data['choices'][0]['message']['content'] as String;
+            return content.trim();
+          } else {
+            if (kDebugMode) print('Groq model $modelName status ${response.statusCode}: ${response.body}');
+          }
+        } catch (mErr) {
+          if (kDebugMode) print('Groq model $modelName failed, trying next: $mErr');
+        }
       }
     } catch (e) {
       if (kDebugMode) print('Groq API direct exception: $e');

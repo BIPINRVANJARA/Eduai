@@ -144,12 +144,80 @@ class ChatRepository {
       }
     }
 
-    // 2. Intelligent Multi-Tag & Multilingual Document Search (Only for initial document fetch requests)
+    // 2. RAG Full-Text Search for Question Answering (Primary Retrieval)
     final String currentInstId = (student?.collegeId.isNotEmpty == true
             ? student!.collegeId
             : college.id)
         .trim();
 
+    if (isQuestionAnsweringRequest && SupabaseService.client != null) {
+      try {
+        final chunksRes = await SupabaseService.client!.rpc('search_document_chunks', params: {
+          'query_text': userText,
+          'match_count': 8,
+          'filter_institution_id': currentInstId.isNotEmpty ? currentInstId : null,
+          'filter_department': student?.department,
+        });
+
+        if (chunksRes != null && (chunksRes as List).isNotEmpty) {
+          // RAG chunks found — route directly to Groq with real document content
+          final groqReply = await SupabaseService.queryGroqDirect(
+            userText: userText,
+            collegeName: college.name,
+            isVerified: isVerified,
+            student: student,
+            conversationHistory: conversationHistory,
+            institutionId: currentInstId,
+          );
+
+          if (groqReply != null && groqReply.isNotEmpty) {
+            String responseText = groqReply;
+            Map<String, dynamic>? attachedPayload;
+
+            // Extract [ATTACH_DOC:<doc_id>] if present
+            final attachDocRegex = RegExp(r'\[ATTACH_DOC:(.*?)\]');
+            final match = attachDocRegex.firstMatch(responseText);
+            if (match != null) {
+              final docId = match.group(1)?.trim();
+              responseText = responseText.replaceAll(attachDocRegex, '').trim();
+
+              if (docId != null && docId.isNotEmpty) {
+                try {
+                  final docFetch = await SupabaseService.client!
+                      .from('documents')
+                      .select('*')
+                      .eq('id', docId)
+                      .maybeSingle();
+                  if (docFetch != null) {
+                    attachedPayload = {
+                      'fileUrl': docFetch['file_url'],
+                      'title': docFetch['title'],
+                      'category': (docFetch['category'] ?? 'DOCUMENT').toString().replaceAll('_', ' ').toUpperCase(),
+                      'subject': docFetch['subject_name'] ?? '',
+                      'department': docFetch['department'] ?? '',
+                      'semester': docFetch['semester'] ?? '',
+                    };
+                  }
+                } catch (_) {}
+              }
+            }
+
+            return ChatMessageModel(
+              id: DateTime.now().millisecondsSinceEpoch.toString(),
+              sender: ChatSender.ai,
+              text: responseText,
+              timestamp: DateTime.now(),
+              dataType: attachedPayload != null ? ChatDataType.timetable : ChatDataType.none,
+              payload: attachedPayload,
+            );
+          }
+        }
+      } catch (e) {
+        // Fallback to heuristic + Groq
+      }
+    }
+
+    // 3. Heuristic Document Card Matching (for download/view requests like "give me timetable")
     if (!isStudentDataQuery && !isQuestionAnsweringRequest) {
       try {
         if (SupabaseService.client != null) {
@@ -397,7 +465,7 @@ class ChatRepository {
       }
     }
 
-    // 2. Direct Groq AI API Call with Multi-Turn History & Anti-Hallucination
+    // 4. Direct Groq AI API Call with Multi-Turn History & Anti-Hallucination
     final groqDirectReply = await SupabaseService.queryGroqDirect(
       userText: userText,
       collegeName: college.name,
@@ -452,7 +520,7 @@ class ChatRepository {
       );
     }
 
-    // 3. Robust Multi-Turn Document & Assignment Question Solver
+    // 5. Legacy Hardcoded Academic Solver (Fallback for pre-indexed content)
     if (isQuestionAnsweringRequest) {
       String activeSubject = 'Fundamentals of Blockchain (FBC)';
       String activeDocTitle = 'Academic Assignment';

@@ -4,6 +4,7 @@ import FileUploader from '../components/FileUploader'
 import { supabase } from '../config/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { parseAdminUploadPrompt, type ExtractedDocMetadata } from '../lib/groq'
+import { indexDocumentForRag, type RagIndexResult } from '../lib/ragIndexer'
 
 const CATEGORIES = [
   { value: 'timetable', label: 'Timetable' },
@@ -51,6 +52,7 @@ export default function UploadPage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [extractedData, setExtractedData] = useState<ExtractedDocMetadata | null>(null)
   const [customTagInput, setCustomTagInput] = useState('')
+  const [ragStatus, setRagStatus] = useState<string>('')
 
   // Manual Mode States
   const [manualUploadSource, setManualUploadSource] = useState<'file' | 'link'>('file')
@@ -135,25 +137,52 @@ export default function UploadPage() {
         institution_id: currentInstId,
       }
 
-      let { error: dbError } = await supabase.from('documents').insert([insertPayload])
+      let { data: insertedDoc, error: dbError } = await supabase
+        .from('documents')
+        .insert([insertPayload])
+        .select('id')
+        .single()
 
       // Fallback if semester column is integer in Postgres
       if (dbError && dbError.message?.includes('invalid input syntax for type integer')) {
         const firstInt = parseInt(extractedData.semester) || 1
         insertPayload.semester = firstInt
-        const retry = await supabase.from('documents').insert([insertPayload])
+        const retry = await supabase.from('documents').insert([insertPayload]).select('id').single()
         dbError = retry.error
+        insertedDoc = retry.data
       }
 
       if (dbError) throw dbError
 
-      setSuccess(`✅ Successfully uploaded "${extractedData.title}" with ${extractedData.tags.length} search tags! Students and parents can now query it directly through AI.`)
+      // 3. RAG Indexing: Extract text, chunk, and index for AI search
+      let ragMessage = ''
+      if (file && insertedDoc?.id) {
+        setRagStatus('🔍 Indexing document for AI search...')
+        const ragResult = await indexDocumentForRag(file, insertedDoc.id, {
+          institutionId: currentInstId,
+          department: extractedData.department,
+          semester: extractedData.semester,
+          subjectName: extractedData.subject_name,
+        })
+
+        if (ragResult.success) {
+          ragMessage = ` 📚 RAG indexed: ${ragResult.chunksCreated} searchable chunks from ${ragResult.pageCount} pages.`
+        } else if (ragResult.skippedReason) {
+          ragMessage = ` ⚠️ ${ragResult.skippedReason}`
+        } else if (ragResult.error) {
+          ragMessage = ` ⚠️ RAG indexing failed: ${ragResult.error}`
+        }
+        setRagStatus('')
+      }
+
+      setSuccess(`✅ Successfully uploaded "${extractedData.title}" with ${extractedData.tags.length} search tags!${ragMessage}`)
       setFile(null)
       setAdminPrompt('')
       setExtractedData(null)
     } catch (err: any) {
       console.error('Upload error:', err)
       setError(err.message || 'An error occurred during upload.')
+      setRagStatus('')
     } finally {
       setLoading(false)
     }
@@ -197,7 +226,7 @@ export default function UploadPage() {
         finalFileSize = file.size
       }
 
-      const { error: dbError } = await supabase.from('documents').insert([
+      const { data: insertedDoc, error: dbError } = await supabase.from('documents').insert([
         {
           title: formData.title,
           description: formData.description,
@@ -214,11 +243,30 @@ export default function UploadPage() {
           uploaded_by: user?.id || null,
           institution_id: currentInstId,
         },
-      ])
+      ]).select('id').single()
 
       if (dbError) throw dbError
 
-      setSuccess('✅ Document registered and published successfully!')
+      // RAG Indexing for manual uploads
+      let ragMessage = ''
+      if (manualUploadSource === 'file' && file && insertedDoc?.id) {
+        setRagStatus('🔍 Indexing document for AI search...')
+        const ragResult = await indexDocumentForRag(file, insertedDoc.id, {
+          institutionId: currentInstId,
+          department: formData.department,
+          semester: formData.semester,
+          subjectName: formData.subject_name || formData.title,
+        })
+
+        if (ragResult.success) {
+          ragMessage = ` 📚 RAG indexed: ${ragResult.chunksCreated} searchable chunks from ${ragResult.pageCount} pages.`
+        } else if (ragResult.skippedReason) {
+          ragMessage = ` ⚠️ ${ragResult.skippedReason}`
+        }
+        setRagStatus('')
+      }
+
+      setSuccess(`✅ Document registered and published successfully!${ragMessage}`)
       setFile(null)
       setManualLinkUrl('')
       setManualFileName('')
@@ -312,6 +360,13 @@ export default function UploadPage() {
         <div className="p-4 bg-primary/10 border border-primary/20 rounded-xl text-primary text-sm flex items-center gap-3">
           <CheckCircle2 className="w-5 h-5 shrink-0" />
           <span>{success}</span>
+        </div>
+      )}
+
+      {ragStatus && (
+        <div className="p-4 bg-cyan-500/10 border border-cyan-500/20 rounded-xl text-cyan-400 text-sm flex items-center gap-3 animate-pulse">
+          <RefreshCw className="w-5 h-5 shrink-0 animate-spin" />
+          <span>{ragStatus}</span>
         </div>
       )}
 

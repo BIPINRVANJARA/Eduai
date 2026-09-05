@@ -128,30 +128,53 @@ JSON Output Schema:
 Attached File Name: ${attachedFile ? `"${attachedFile.name}" (${(attachedFile.size / 1024).toFixed(1)} KB)` : 'None'}
 ${fileSnippetText ? `File Content Snippet: """${fileSnippetText}"""` : ''}`;
 
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${GROQ_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'openai/gpt-oss-120b',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userMessage }
-        ],
-        temperature: 0.1,
-        response_format: { type: 'json_object' }
-      })
-    });
+    const modelsToTry = [
+      'openai/gpt-oss-120b',
+      'llama-3.3-70b-versatile',
+      'llama-3.1-70b-versatile',
+      'llama-3.1-8b-instant'
+    ];
 
-    if (!response.ok) {
-      throw new Error(`Groq API error: ${response.statusText}`);
+    let lastError: any = null;
+    let parsed: any = null;
+
+    for (const modelName of modelsToTry) {
+      try {
+        const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${GROQ_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: modelName,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userMessage }
+            ],
+            temperature: 0.1,
+            response_format: { type: 'json_object' }
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const content = data.choices?.[0]?.message?.content;
+          if (content) {
+            parsed = JSON.parse(content);
+            break;
+          }
+        } else {
+          lastError = new Error(`Groq model ${modelName} error: ${response.statusText}`);
+        }
+      } catch (err) {
+        lastError = err;
+      }
     }
 
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content;
-    const parsed = JSON.parse(content);
+    if (!parsed) {
+      throw lastError || new Error('Groq AI model response failed.');
+    }
 
     // Fallback tag builder if tags array was short
     let generatedTags: string[] = Array.isArray(parsed.documentData?.tags) ? parsed.documentData.tags : [];
