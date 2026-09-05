@@ -156,7 +156,7 @@ class ChatRepository {
           'query_text': userText,
           'match_count': 8,
           'filter_institution_id': currentInstId.isNotEmpty ? currentInstId : null,
-          'filter_department': student?.department,
+          'filter_department': student?.branch,
         });
 
         if (chunksRes != null && (chunksRes as List).isNotEmpty) {
