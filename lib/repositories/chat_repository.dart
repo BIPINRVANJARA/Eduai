@@ -5,6 +5,23 @@ import '../models/college_model.dart';
 import '../models/student_model.dart';
 
 class ChatRepository {
+  static final Set<String> _conversationalWords = {
+    'give', 'me', 'please', 'show', 'tell', 'send', 'share', 'can', 'you',
+    'i', 'need', 'want', 'where', 'is', 'the', 'what', 'a', 'an', 'of',
+    'for', 'about', 'with', 'pdf', 'file', 'document', 'download', 'view', 'get',
+    'krupya', 'aapo', 'moklo', 'batavo', 'de', 'do', 'aap'
+  };
+
+  static String _cleanSearchQuery(String text) {
+    final tokens = text
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-zA-Z0-9\s\u0A80-\u0AFF\u0900-\u097F]'), ' ')
+        .split(RegExp(r'\s+'))
+        .where((t) => t.isNotEmpty && !_conversationalWords.contains(t))
+        .toList();
+    return tokens.isNotEmpty ? tokens.join(' ') : text;
+  }
+
   Future<ChatMessageModel> processUserMessageAsync({
     required String userText,
     required CollegeModel college,
@@ -144,23 +161,133 @@ class ChatRepository {
       }
     }
 
-    // 2. RAG Full-Text Search for Question Answering (Primary Retrieval)
+    // 2. RAG Document & Content Search
     final String currentInstId = (student?.collegeId.isNotEmpty == true
             ? student!.collegeId
             : college.id)
         .trim();
 
-    if (isQuestionAnsweringRequest && SupabaseService.client != null) {
+    // Clean conversational stopwords from query for full-text search
+    final cleanedQuery = _cleanSearchQuery(userText);
+
+    // Detect if user wants to VIEW / DOWNLOAD an official document
+    final bool isDocFetchIntent = lower.contains('timetable') ||
+        lower.contains('time table') ||
+        lower.contains('schedule') ||
+        lower.contains('tt') ||
+        lower.contains('સમયપત્રક') ||
+        lower.contains('ટાઈમટેબલ') ||
+        lower.contains('lab manual') ||
+        lower.contains('labmanual') ||
+        lower.contains('practical') ||
+        lower.contains('લેબ') ||
+        lower.contains('મેન્યુઅલ') ||
+        lower.contains('assignment') ||
+        lower.contains('એસાઇનમેન્ટ') ||
+        lower.contains('syllabus') ||
+        lower.contains('curriculum') ||
+        lower.contains('અભ્યાસક્રમ') ||
+        lower.contains('circular') ||
+        lower.contains('notice') ||
+        lower.contains('notes') ||
+        lower.contains('pdf') ||
+        lower.contains('file') ||
+        lower.contains('download') ||
+        lower.contains('દસ્તાવેજ');
+
+    // A. Priority RAG Document Attachment (When user asks for a document / timetable / assignment)
+    if (!isStudentDataQuery && isDocFetchIntent && !isQuestionAnsweringRequest && SupabaseService.client != null) {
       try {
         final chunksRes = await SupabaseService.client!.rpc('search_document_chunks', params: {
-          'query_text': userText,
-          'match_count': 8,
+          'query_text': cleanedQuery.isNotEmpty ? cleanedQuery : userText,
+          'match_count': 3,
           'filter_institution_id': currentInstId.isNotEmpty ? currentInstId : null,
-          'filter_department': student?.branch,
+          'filter_department': null, // Search across all campus documents for accurate matching
         });
 
         if (chunksRes != null && (chunksRes as List).isNotEmpty) {
-          // RAG chunks found — route directly to Groq with real document content
+          final topChunk = chunksRes.first;
+          final docId = topChunk['document_id'] as String?;
+
+          if (docId != null && docId.isNotEmpty) {
+            final docFetch = await SupabaseService.client!
+                .from('documents')
+                .select('*')
+                .eq('id', docId)
+                .maybeSingle();
+
+            if (docFetch != null) {
+              final cat = (docFetch['category'] ?? 'document').toString();
+              final title = docFetch['title'] ?? 'Academic Document';
+              final dept = docFetch['department'] ?? '';
+              final sem = docFetch['semester'] ?? '';
+              final subject = docFetch['subject_name'] ?? '';
+
+              String categoryDisplay = cat.replaceAll('_', ' ').toUpperCase();
+              String label;
+
+              if (isGujarati) {
+                if (cat == 'timetable') {
+                  label = 'અહીં **$title** ($dept સેમેસ્ટર $sem) માટેનું ઓફિશિયલ સમયપત્રક (Timetable) છે:';
+                } else if (cat == 'lab_manual') {
+                  label = 'અહીં **${subject.isNotEmpty ? subject : title}** ($dept સેમેસ્ટર $sem) માટેની લેબ મેન્યુઅલ છે:';
+                } else if (cat == 'assignment') {
+                  label = 'અહીં **${subject.isNotEmpty ? subject : title}** ($dept સેમેસ્ટર $sem) માટેનું એસાઇનમેન્ટ છે:';
+                } else if (cat == 'circular') {
+                  label = 'અહીં **$title** નો ઓફિશિયલ પરિપત્ર / નોટિસ છે:';
+                } else {
+                  label = 'અહીં તમે માંગેલ **$title** ($categoryDisplay) દસ્તાવેજ છે:';
+                }
+              } else {
+                if (cat == 'timetable') {
+                  label = 'Here is the latest **Timetable** for **$title** ($dept Sem $sem):';
+                } else if (cat == 'lab_manual') {
+                  label = 'Here is the **Lab Manual** for **${subject.isNotEmpty ? subject : title}** ($dept Sem $sem):';
+                } else if (cat == 'assignment') {
+                  label = 'Here is the latest **Assignment** for **${subject.isNotEmpty ? subject : title}** ($dept Sem $sem):';
+                } else if (cat == 'circular') {
+                  label = 'Here is the **Circular / Notice** regarding **$title**:';
+                } else if (cat == 'syllabus') {
+                  label = 'Here is the **Syllabus / Curriculum** for **${subject.isNotEmpty ? subject : title}** ($dept Sem $sem):';
+                } else {
+                  label = 'Here is the **$title** ($categoryDisplay) you requested:';
+                }
+              }
+
+              return ChatMessageModel(
+                id: DateTime.now().millisecondsSinceEpoch.toString(),
+                sender: ChatSender.ai,
+                text: label,
+                timestamp: DateTime.now(),
+                dataType: cat == 'timetable' ? ChatDataType.timetable : ChatDataType.none,
+                payload: {
+                  'fileUrl': docFetch['file_url'],
+                  'title': title,
+                  'category': categoryDisplay,
+                  'subject': subject,
+                  'department': dept,
+                  'semester': sem,
+                },
+              );
+            }
+          }
+        }
+      } catch (e) {
+        // Fallback to Groq AI
+      }
+    }
+
+    // B. RAG Full-Text Search for Question Answering
+    if (isQuestionAnsweringRequest && SupabaseService.client != null) {
+      try {
+        final chunksRes = await SupabaseService.client!.rpc('search_document_chunks', params: {
+          'query_text': cleanedQuery.isNotEmpty ? cleanedQuery : userText,
+          'match_count': 8,
+          'filter_institution_id': currentInstId.isNotEmpty ? currentInstId : null,
+          'filter_department': null,
+        });
+
+        if (chunksRes != null && (chunksRes as List).isNotEmpty) {
           final groqReply = await SupabaseService.queryGroqDirect(
             userText: userText,
             collegeName: college.name,
@@ -174,7 +301,6 @@ class ChatRepository {
             String responseText = groqReply;
             Map<String, dynamic>? attachedPayload;
 
-            // Extract [ATTACH_DOC:<doc_id>] if present
             final attachDocRegex = RegExp(r'\[ATTACH_DOC:(.*?)\]');
             final match = attachDocRegex.firstMatch(responseText);
             if (match != null) {
@@ -210,254 +336,6 @@ class ChatRepository {
               dataType: attachedPayload != null ? ChatDataType.timetable : ChatDataType.none,
               payload: attachedPayload,
             );
-          }
-        }
-      } catch (e) {
-        // Fallback to heuristic + Groq
-      }
-    }
-
-    // 3. Heuristic Document Card Matching (for download/view requests like "give me timetable")
-    if (!isStudentDataQuery && !isQuestionAnsweringRequest) {
-      try {
-        if (SupabaseService.client != null) {
-          var docQuery = SupabaseService.client!.from('documents').select('*');
-          if (currentInstId.isNotEmpty) {
-            docQuery = docQuery.eq('institution_id', currentInstId);
-          }
-
-          final docsRes = await docQuery
-              .order('created_at', ascending: false)
-              .limit(50);
-
-          final docsList = (docsRes as List?) ?? [];
-          if (docsList.isNotEmpty) {
-            Map<String, dynamic>? bestDoc;
-            int highestScore = 0;
-
-            // Extract query tokens & known acronyms
-            final queryTokens = lower
-                .replaceAll(RegExp(r'[^a-zA-Z0-9\s]'), ' ')
-                .split(RegExp(r'\s+'))
-                .where((t) => t.isNotEmpty)
-                .toSet();
-
-            // Known subject keywords to isolate
-            final knownSubjectKeywords = {
-              'fbc', 'blockchain', 'aipd', 'aipe', 'prompt', 'dbms', 'dsa', 
-              'cn', 'os', 'iot', 'cloud', 'cns', 'se', 'python', 'java', 
-              'wt', 'wad', 'maths', 'math', 'physics', 'chemistry', 'cyber'
-            };
-
-            final activeQuerySubjects = queryTokens.intersection(knownSubjectKeywords);
-
-            // Extract assignment / unit number in query (e.g. "fbc 1 assignment", "assignment 2", "fbc 1")
-            int? queryNumber;
-            final digitMatches = RegExp(r'\b([0-9]+)\b').allMatches(lower);
-            for (final m in digitMatches) {
-              final raw = m.group(1);
-              if (raw != null) {
-                final start = m.start;
-                final prefix = lower.substring(0, start).trim();
-                // Ignore semester numbers like "sem 5"
-                if (!prefix.endsWith('sem') && !prefix.endsWith('semester') && !prefix.endsWith('સેમ')) {
-                  queryNumber = int.tryParse(raw);
-                  break;
-                }
-              }
-            }
-
-            for (final rawDoc in docsList) {
-              final doc = Map<String, dynamic>.from(rawDoc);
-              int score = 0;
-
-              final title = (doc['title'] ?? '').toString().toLowerCase();
-              final category = (doc['category'] ?? '').toString().toLowerCase();
-              final dept = (doc['department'] ?? '').toString().toLowerCase();
-              final sem = (doc['semester'] ?? '').toString().toLowerCase();
-              final subject = (doc['subject_name'] ?? '').toString().toLowerCase();
-              final tags = (doc['tags'] as List?)?.map((t) => t.toString().toLowerCase()).toList() ?? [];
-
-              final docSubjectText = '$title $subject ${tags.join(' ')}';
-
-              // === A. STRICT SUBJECT MATCHING ===
-              if (activeQuerySubjects.isNotEmpty) {
-                bool matchedSubject = false;
-                for (final subjKey in activeQuerySubjects) {
-                  if (docSubjectText.contains(subjKey)) {
-                    score += 300;
-                    matchedSubject = true;
-                  }
-                }
-                // If query specified a known subject and this doc doesn't have it -> PENALTY
-                if (!matchedSubject) {
-                  score -= 400;
-                }
-              }
-
-              // === B. ASSIGNMENT / UNIT NUMBER MATCHING ===
-              if (queryNumber != null) {
-                final docHasNumber = title.contains('assignment $queryNumber') ||
-                    title.contains('assignment$queryNumber') ||
-                    title.contains('unit $queryNumber') ||
-                    title.contains(' $queryNumber ') ||
-                    title.contains(' $queryNumber-') ||
-                    title.contains(' $queryNumber -') ||
-                    tags.any((t) => t.contains('assignment $queryNumber') || t.contains('unit $queryNumber') || t == '$queryNumber');
-
-                if (docHasNumber) {
-                  score += 150;
-                } else {
-                  score -= 100;
-                }
-              }
-
-              // === C. CATEGORY & INTENT MATCHING ===
-              final isTTIntent = lower.contains('timetable') ||
-                  lower.contains('time table') ||
-                  lower.contains('schedule') ||
-                  lower.contains('tt') ||
-                  lower.contains('સમયપત્રક') ||
-                  lower.contains('ટાઈમટેબલ') ||
-                  lower.contains('समय सारणी');
-
-              final isLabIntent = lower.contains('lab') ||
-                  lower.contains('manual') ||
-                  lower.contains('practical') ||
-                  lower.contains('લેબ') ||
-                  lower.contains('મેન્યુઅલ') ||
-                  lower.contains('પુસ્તિકા');
-
-              final isAssignIntent = lower.contains('assignment') ||
-                  lower.contains('homework') ||
-                  lower.contains('problem set') ||
-                  lower.contains('એસાઇનમેન્ટ') ||
-                  lower.contains('એસાઈનમેન્ટ') ||
-                  lower.contains('સ્વાધ્યાય') ||
-                  lower.contains('હોમવર્ક');
-
-              final isCircularIntent = lower.contains('circular') ||
-                  lower.contains('notice') ||
-                  lower.contains('પરિપત્ર') ||
-                  lower.contains('નોટિસ');
-
-              final isSyllabusIntent = lower.contains('syllabus') ||
-                  lower.contains('curriculum') ||
-                  lower.contains('અભ્યાસક્રમ');
-
-              if (category == 'timetable' && isTTIntent) {
-                score += 50;
-              } else if (category == 'lab_manual' && isLabIntent) {
-                score += 50;
-              } else if (category == 'assignment' && isAssignIntent) {
-                score += 50;
-              } else if (category == 'circular' && isCircularIntent) {
-                score += 50;
-              } else if (category == 'syllabus' && isSyllabusIntent) {
-                score += 50;
-              }
-
-              // === D. TAG & TITLE MATCHING ===
-              for (final tag in tags) {
-                if (tag.isNotEmpty && (lower.contains(tag) || tag.contains(lower))) {
-                  score += 20;
-                }
-              }
-
-              if (title.isNotEmpty && (lower.contains(title) || title.contains(lower))) score += 25;
-              if (subject.isNotEmpty && (lower.contains(subject) || subject.contains(lower))) score += 25;
-
-              // === E. DEPARTMENT & SEMESTER MATCHING ===
-              if (score > 0 && dept.isNotEmpty) {
-                if ((lower.contains('it') || lower.contains('information')) &&
-                    (dept.contains('information technology') || dept.contains('it'))) {
-                  score += 10;
-                } else if (student != null && student.branch.toLowerCase().contains(dept)) {
-                  score += 5;
-                }
-              }
-
-              if (score > 0 && sem.isNotEmpty) {
-                final semTokens = sem.replaceAll(RegExp(r'[^0-9]'), ' ').split(' ').where((s) => s.trim().isNotEmpty);
-                for (final s in semTokens) {
-                  if (lower.contains('sem $s') || lower.contains('semester $s') || lower.contains('સેમ $s') || lower.contains('sem$s')) {
-                    score += 15;
-                  }
-                }
-              }
-
-              if (score > highestScore) {
-                highestScore = score;
-                bestDoc = doc;
-              }
-            }
-
-            // Confident document match found (score >= 40)
-            if (bestDoc != null && highestScore >= 40) {
-              final cat = (bestDoc['category'] ?? 'Document').toString();
-              final title = bestDoc['title'] ?? 'Academic Document';
-              final dept = bestDoc['department'] ?? '';
-              final sem = bestDoc['semester'] ?? '';
-              final subject = bestDoc['subject_name'] ?? '';
-
-              String categoryDisplay = cat.replaceAll('_', ' ').toUpperCase();
-              String label;
-
-              if (isGujarati) {
-                if (cat == 'timetable') {
-                  label = 'અહીં **$title** ($dept સેમેસ્ટર $sem) માટેનું ઓફિશિયલ સમયપત્રક (Timetable) છે:';
-                } else if (cat == 'lab_manual') {
-                  label = 'અહીં **${subject.isNotEmpty ? subject : title}** ($dept સેમેસ્ટર $sem) માટેની લેબ મેન્યુઅલ છે:';
-                } else if (cat == 'assignment') {
-                  label = 'અહીં **${subject.isNotEmpty ? subject : title}** ($dept સેમેસ્ટર $sem) માટેનું એસાઇનમેન્ટ છે:';
-                } else if (cat == 'circular') {
-                  label = 'અહીં **$title** નો ઓફિશિયલ પરિપત્ર / નોટિસ છે:';
-                } else {
-                  label = 'અહીં તમે માંગેલ **$title** ($categoryDisplay) દસ્તાવેજ છે:';
-                }
-              } else {
-                label = 'Here is the **$categoryDisplay** you requested:';
-                if (cat == 'timetable') {
-                  label = 'Here is the latest **Timetable** for **$title** ($dept Sem $sem):';
-                } else if (cat == 'lab_manual') {
-                  label = 'Here is the **Lab Manual** for **${subject.isNotEmpty ? subject : title}** ($dept Sem $sem):';
-                } else if (cat == 'assignment') {
-                  label = 'Here is the latest **Assignment** for **${subject.isNotEmpty ? subject : title}** ($dept Sem $sem):';
-                } else if (cat == 'circular') {
-                  label = 'Here is the **Circular / Notice** regarding **$title**:';
-                } else if (cat == 'syllabus') {
-                  label = 'Here is the **Syllabus / Curriculum** for **${subject.isNotEmpty ? subject : title}** ($dept Sem $sem):';
-                } else if (cat == 'notes' || cat == 'study_material') {
-                  label = 'Here are the **Lecture Notes / Study Material** for **${subject.isNotEmpty ? subject : title}**:';
-                } else if (cat == 'pyq' || cat == 'exam_paper') {
-                  label = 'Here is the **Previous Exam Paper / PYQ** for **${subject.isNotEmpty ? subject : title}**:';
-                } else if (cat == 'fee_structure') {
-                  label = 'Here is the **Fee Structure & Guidelines** for **$title**:';
-                } else if (cat == 'placement' || cat == 'internship') {
-                  label = 'Here is the **Placement / Internship Guide** for **$title**:';
-                } else if (cat == 'project') {
-                  label = 'Here is the **Project Guideline & Template** for **$title**:';
-                } else {
-                  label = 'Here is the **$title** ($categoryDisplay) you requested:';
-                }
-              }
-
-              return ChatMessageModel(
-                id: DateTime.now().millisecondsSinceEpoch.toString(),
-                sender: ChatSender.ai,
-                text: label,
-                timestamp: DateTime.now(),
-                dataType: cat == 'timetable' ? ChatDataType.timetable : ChatDataType.none,
-                payload: {
-                  'fileUrl': bestDoc['file_url'],
-                  'title': title,
-                  'category': categoryDisplay,
-                  'subject': subject,
-                  'department': dept,
-                  'semester': sem,
-                },
-              );
-            }
           }
         }
       } catch (e) {

@@ -137,11 +137,24 @@ class SupabaseService {
           // Primary: Search document chunks using PostgreSQL full-text search
           bool ragChunksFound = false;
           try {
+            final searchTokens = userText
+                .toLowerCase()
+                .replaceAll(RegExp(r'[^a-zA-Z0-9\s\u0A80-\u0AFF\u0900-\u097F]'), ' ')
+                .split(RegExp(r'\s+'))
+                .where((t) => t.isNotEmpty && !const {
+                  'give', 'me', 'please', 'show', 'tell', 'send', 'share', 'can', 'you',
+                  'i', 'need', 'want', 'where', 'is', 'the', 'what', 'a', 'an', 'of',
+                  'for', 'about', 'with', 'pdf', 'file', 'document', 'download', 'view', 'get',
+                  'krupya', 'aapo', 'moklo', 'batavo', 'de', 'do', 'aap'
+                }.contains(t))
+                .toList();
+            final cleanedSearchQuery = searchTokens.isNotEmpty ? searchTokens.join(' ') : userText;
+
             final chunksRes = await client!.rpc('search_document_chunks', params: {
-              'query_text': userText,
+              'query_text': cleanedSearchQuery,
               'match_count': 8,
               'filter_institution_id': (instId != null && instId.isNotEmpty) ? instId : null,
-              'filter_department': student?.branch,
+              'filter_department': null,
             });
 
             if (chunksRes != null && (chunksRes as List).isNotEmpty) {
