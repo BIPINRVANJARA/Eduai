@@ -49,29 +49,38 @@ class AcademicSolverService {
     // B. EXTRACT QUESTION NUMBER & UNIT CONTEXT
     // -----------------------------------------------------------------------
     int questionNumber = 1;
-    final numMatch = RegExp(r'(?:que|question|q|prashna|પ્રશ્ન)?\s*([0-9]+)').firstMatch(lower);
-    if (numMatch != null && numMatch.group(1) != null) {
-      questionNumber = int.tryParse(numMatch.group(1)!) ?? 1;
+    // Prefer explicit question prefix (e.g. "que 1", "question 2", "q3") so we don't accidentally match "3rd assignment" as question 3!
+    final explicitNumMatch = RegExp(r'(?:que|question|q|prashna|પ્રશ્ન)\s*([0-9]+)', caseSensitive: false).firstMatch(lower);
+    if (explicitNumMatch != null && explicitNumMatch.group(1) != null) {
+      questionNumber = int.tryParse(explicitNumMatch.group(1)!) ?? 1;
+    } else {
+      final fallbackNumMatch = RegExp(r'\b([0-9]+)\b').firstMatch(lower);
+      if (fallbackNumMatch != null && fallbackNumMatch.group(1) != null) {
+        questionNumber = int.tryParse(fallbackNumMatch.group(1)!) ?? 1;
+      }
     }
 
     final bool isUnit2 = docLower.contains('assignment 2') || docLower.contains('assignment2') || docLower.contains('unit 2') || docLower.contains('unit-2') || lower.contains('assignment 2');
-    final bool isFbc = docLower.contains('fbc') || docLower.contains('blockchain') || docLower.contains('foundation of blockchain');
-    final bool isAipd = docLower.contains('aipd') || docLower.contains('product development');
-    final bool isAipe = docLower.contains('aipe') || docLower.contains('prompt');
-    final bool isDbms = docLower.contains('dbms') || docLower.contains('database');
-    final bool isCn = docLower.contains('cn') || docLower.contains('network');
-    final bool isOs = docLower.contains('os') || docLower.contains('operating system');
+    final bool isAipd = lower.contains('aipd') || docLower.contains('aipd') || docLower.contains('product development');
+    final bool isAipe = lower.contains('aipe') || lower.contains('prompt') || docLower.contains('aipe') || docLower.contains('prompt');
+    final bool isCdct = lower.contains('cdct') || lower.contains('cyber') || docLower.contains('cdct') || docLower.contains('cyber');
+    final bool isFbc = lower.contains('fbc') || lower.contains('blockchain') || docLower.contains('fbc') || docLower.contains('blockchain') || docLower.contains('foundation of blockchain');
+    final bool isDbms = lower.contains('dbms') || docLower.contains('dbms') || docLower.contains('database');
+    final bool isCn = lower.contains('cn') || docLower.contains('network');
+    final bool isOs = lower.contains('os') || docLower.contains('operating system');
 
-    if (isFbc) {
+    if (isAipd) {
+      return _solveAipdQuestion(questionNumber, language);
+    } else if (isAipe) {
+      return _solveAipeQuestion(questionNumber, language);
+    } else if (isCdct) {
+      return _solveGenericQuestion('Cyber Security and Digital Crime Tracking (CDCT)', questionNumber, language);
+    } else if (isFbc) {
       if (isUnit2) {
         return _solveFbcUnit2Question(questionNumber, language);
       } else {
         return _solveFbcUnit1Question(questionNumber, language);
       }
-    } else if (isAipd) {
-      return _solveAipdQuestion(questionNumber, language);
-    } else if (isAipe) {
-      return _solveAipeQuestion(questionNumber, language);
     } else if (isDbms) {
       return _solveDbmsQuestion(questionNumber, language);
     } else if (isCn) {

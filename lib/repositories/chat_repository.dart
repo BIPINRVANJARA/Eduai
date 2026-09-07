@@ -398,12 +398,23 @@ class ChatRepository {
       );
     }
 
-    // 5. Legacy Hardcoded Academic Solver (Fallback for pre-indexed content)
+    // 5. Dynamic Subject-Aware Academic Solver Fallback
     if (isQuestionAnsweringRequest) {
-      String activeSubject = 'Fundamentals of Blockchain (FBC)';
+      String activeSubject = 'Information Technology';
       String activeDocTitle = 'Academic Assignment';
 
-      if (conversationHistory != null && conversationHistory.isNotEmpty) {
+      final qLower = userText.toLowerCase();
+      if (qLower.contains('aipd') || qLower.contains('product development')) {
+        activeSubject = 'Artificial Intelligence and Product Development (AIPD)';
+      } else if (qLower.contains('aipe') || qLower.contains('prompt')) {
+        activeSubject = 'Artificial Intelligence and Prompt Engineering (AIPE)';
+      } else if (qLower.contains('cdct') || qLower.contains('cyber')) {
+        activeSubject = 'Cyber Security and Digital Crime Tracking (CDCT)';
+      } else if (qLower.contains('fbc') || qLower.contains('blockchain')) {
+        activeSubject = 'Fundamentals of Blockchain (FBC)';
+      } else if (qLower.contains('dbms') || qLower.contains('database')) {
+        activeSubject = 'Database Management Systems (DBMS)';
+      } else if (conversationHistory != null && conversationHistory.isNotEmpty) {
         for (final msg in conversationHistory.reversed) {
           if (msg.payload != null) {
             final pSubj = msg.payload!['subject']?.toString();
@@ -423,7 +434,7 @@ class ChatRepository {
         language: lang,
       );
 
-      if (academicAnswer != null && academicAnswer.isNotEmpty) {
+      if (academicAnswer.isNotEmpty) {
         return ChatMessageModel(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
           sender: ChatSender.ai,
@@ -434,7 +445,33 @@ class ChatRepository {
       }
     }
 
-    // 4. Fallback processor
+    // 6. Helpful Not-Found Handler for Specific Document Requests
+    if (isDocFetchIntent) {
+      String subjectHint = 'the requested subject';
+      if (lower.contains('aipd')) {
+        subjectHint = 'Artificial Intelligence & Product Development (AIPD)';
+      } else if (lower.contains('aipe')) {
+        subjectHint = 'Artificial Intelligence & Prompt Engineering (AIPE)';
+      } else if (lower.contains('fbc') || lower.contains('blockchain')) {
+        subjectHint = 'Fundamentals of Blockchain (FBC)';
+      } else if (lower.contains('cdct')) {
+        subjectHint = 'Cyber Security & Digital Crime Tracking (CDCT)';
+      }
+
+      final String missingMsg = isGujarati
+          ? 'ક્ષમા કરશો, **$subjectHint** માટે માંગેલ દસ્તાવેજ હજી સુધી રિપોઝીટરીમાં અપલોડ થયો નથી. ઉપલબ્ધ એસાઇનમેન્ટ (Assignment 1 અને 2) તપાસો અથવા તમારા ફેકલ્ટીનો સંપર્ક કરો.'
+          : 'I searched the campus repository, but that specific document for **$subjectHint** is not uploaded yet. Currently, **Assignment 1** and **Assignment 2** are available. Would you like to view Assignment 1 or 2?';
+
+      return ChatMessageModel(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        sender: ChatSender.ai,
+        text: missingMsg,
+        timestamp: DateTime.now(),
+        dataType: ChatDataType.none,
+      );
+    }
+
+    // 7. Fallback processor
     return processUserMessage(
       userText: userText,
       college: college,
@@ -451,20 +488,19 @@ class ChatRepository {
   }) {
     final text = userText.toLowerCase();
 
-    // Check for private / student-specific intent
+    // Check for private / student-specific intent (Only personal student records require verification)
     final isPrivateIntent = text.contains('attendance') ||
         text.contains('mark') ||
         text.contains('result') ||
         text.contains('grade') ||
         text.contains('fee') ||
         text.contains('due') ||
-        text.contains('timetable') ||
-        text.contains('schedule') ||
         text.contains('son') ||
         text.contains('daughter') ||
         text.contains('child') ||
-        text.contains('class') ||
-        text.contains('assignment');
+        text.contains('હાજરી') ||
+        text.contains('પરિણામ') ||
+        text.contains('માર્ક્સ');
 
     if (isPrivateIntent && !isVerified) {
       return ChatMessageModel(
