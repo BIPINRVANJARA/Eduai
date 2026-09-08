@@ -18,6 +18,21 @@ class SupabaseService {
     return '$p1$p2$p3';
   }
 
+  static bool _isValidUuid(String? str) {
+    if (str == null || str.trim().isEmpty) return false;
+    return RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$').hasMatch(str.trim());
+  }
+
+  static String? _resolveInstitutionUuid(String? id) {
+    if (id == null || id.trim().isEmpty) return null;
+    final clean = id.trim();
+    if (_isValidUuid(clean)) return clean;
+    if (clean.toLowerCase().contains('gph') || clean == '624' || clean.toLowerCase().contains('himmatnagar')) {
+      return '6c6e9b83-cabf-4b13-855b-97d2e1461177';
+    }
+    return null;
+  }
+
   static bool _initialized = false;
 
   static Future<void> initialize() async {
@@ -81,7 +96,7 @@ class SupabaseService {
     final cleanPassword = password.trim();
     if (cleanEmail == 'admin@gph.ac.in' && (cleanPassword == 'GPH@2026!' || cleanPassword == 'admin123')) {
       return {
-        'id': 'gph_624',
+        'id': '6c6e9b83-cabf-4b13-855b-97d2e1461177',
         'code': '624',
         'name': 'Government Polytechnic Himmatnagar',
         'short_name': 'GPH Himmatnagar',
@@ -137,15 +152,24 @@ class SupabaseService {
       // 1. RAG: Full-Text Search on document_chunks via Supabase RPC
       if (client != null) {
         try {
-          final instId = (institutionId?.isNotEmpty == true
+          final rawInst = (institutionId?.isNotEmpty == true
               ? institutionId
               : (student?.collegeId.isNotEmpty == true ? student!.collegeId : ''))?.trim();
+          final instId = _resolveInstitutionUuid(rawInst);
 
           // Primary: Search document chunks using PostgreSQL full-text search
           bool ragChunksFound = false;
           try {
-            final searchTokens = userText
+            final normalizedText = userText
                 .toLowerCase()
+                .replaceAll(RegExp(r'\b1st\b'), '1')
+                .replaceAll(RegExp(r'\b2nd\b'), '2')
+                .replaceAll(RegExp(r'\b3rd\b'), '3')
+                .replaceAll(RegExp(r'\b4th\b'), '4')
+                .replaceAll(RegExp(r'\b5th\b'), '5')
+                .replaceAll(RegExp(r'\b6th\b'), '6');
+
+            final searchTokens = normalizedText
                 .replaceAll(RegExp(r'[^a-zA-Z0-9\s\u0A80-\u0AFF\u0900-\u097F]'), ' ')
                 .split(RegExp(r'\s+'))
                 .where((t) => t.isNotEmpty && !const {
@@ -160,7 +184,7 @@ class SupabaseService {
             final chunksRes = await client!.rpc('search_document_chunks', params: {
               'query_text': cleanedSearchQuery,
               'match_count': 8,
-              'filter_institution_id': (instId != null && instId.isNotEmpty) ? instId : null,
+              'filter_institution_id': instId,
               'filter_department': null,
             });
 
@@ -496,7 +520,7 @@ CRITICAL INSTRUCTIONS:
         parentName: 'Parent',
         branch: response['department'] ?? response['branch_name'] ?? 'Information Technology',
         semester: response['semester'] is int ? response['semester'] : int.tryParse(response['semester']?.toString() ?? '1') ?? 1,
-        collegeId: response['institution_id'] ?? 'gph_624',
+        collegeId: response['institution_id'] ?? '6c6e9b83-cabf-4b13-855b-97d2e1461177',
         overallAttendance: (response['overall_attendance'] as num?)?.toDouble() ?? 85.0,
         subjectAttendances: const [],
         internalMarks: marksList,

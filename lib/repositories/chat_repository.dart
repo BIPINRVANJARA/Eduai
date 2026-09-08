@@ -12,9 +12,21 @@ class ChatRepository {
     'krupya', 'aapo', 'moklo', 'batavo', 'de', 'do', 'aap'
   };
 
+  static bool _isValidUuid(String? str) {
+    if (str == null || str.trim().isEmpty) return false;
+    return RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$').hasMatch(str.trim());
+  }
+
   static String _cleanSearchQuery(String text) {
-    final tokens = text
-        .toLowerCase()
+    String normalized = text.toLowerCase()
+        .replaceAll(RegExp(r'\b1st\b'), '1')
+        .replaceAll(RegExp(r'\b2nd\b'), '2')
+        .replaceAll(RegExp(r'\b3rd\b'), '3')
+        .replaceAll(RegExp(r'\b4th\b'), '4')
+        .replaceAll(RegExp(r'\b5th\b'), '5')
+        .replaceAll(RegExp(r'\b6th\b'), '6');
+
+    final tokens = normalized
         .replaceAll(RegExp(r'[^a-zA-Z0-9\s\u0A80-\u0AFF\u0900-\u097F]'), ' ')
         .split(RegExp(r'\s+'))
         .where((t) => t.isNotEmpty && !_conversationalWords.contains(t))
@@ -162,10 +174,16 @@ class ChatRepository {
     }
 
     // 2. RAG Document & Content Search
-    final String currentInstId = (student?.collegeId.isNotEmpty == true
+    final String rawInstId = (student?.collegeId.isNotEmpty == true
             ? student!.collegeId
             : college.id)
         .trim();
+
+    final String? currentInstId = _isValidUuid(rawInstId)
+        ? rawInstId
+        : (rawInstId.toLowerCase().contains('gph') || college.code == '624' || college.name.toLowerCase().contains('himmatnagar')
+            ? '6c6e9b83-cabf-4b13-855b-97d2e1461177'
+            : null);
 
     // Clean conversational stopwords from query for full-text search
     final cleanedQuery = _cleanSearchQuery(userText);
@@ -179,6 +197,7 @@ class ChatRepository {
         lower.contains('ટાઈમટેબલ') ||
         lower.contains('lab manual') ||
         lower.contains('labmanual') ||
+        lower.contains('manual') ||
         lower.contains('practical') ||
         lower.contains('લેબ') ||
         lower.contains('મેન્યુઅલ') ||
@@ -201,7 +220,7 @@ class ChatRepository {
         final chunksRes = await SupabaseService.client!.rpc('search_document_chunks', params: {
           'query_text': cleanedQuery.isNotEmpty ? cleanedQuery : userText,
           'match_count': 3,
-          'filter_institution_id': currentInstId.isNotEmpty ? currentInstId : null,
+          'filter_institution_id': currentInstId,
           'filter_department': null, // Search across all campus documents for accurate matching
         });
 
@@ -283,7 +302,7 @@ class ChatRepository {
         final chunksRes = await SupabaseService.client!.rpc('search_document_chunks', params: {
           'query_text': cleanedQuery.isNotEmpty ? cleanedQuery : userText,
           'match_count': 8,
-          'filter_institution_id': currentInstId.isNotEmpty ? currentInstId : null,
+          'filter_institution_id': currentInstId,
           'filter_department': null,
         });
 

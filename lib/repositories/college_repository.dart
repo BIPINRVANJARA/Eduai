@@ -22,7 +22,7 @@ class CollegeRepository {
     // Default fallback placeholder if Supabase connection is pending
     return const [
       CollegeModel(
-        id: 'gph_624',
+        id: '6c6e9b83-cabf-4b13-855b-97d2e1461177',
         name: 'Government Polytechnic Himmatnagar',
         shortName: 'GPH Himmatnagar',
         code: '624',
