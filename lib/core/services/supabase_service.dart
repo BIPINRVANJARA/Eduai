@@ -169,65 +169,137 @@ class SupabaseService {
                 .replaceAll(RegExp(r'\b5th\b'), '5')
                 .replaceAll(RegExp(r'\b6th\b'), '6');
 
-            final searchTokens = normalizedText
-                .replaceAll(RegExp(r'[^a-zA-Z0-9\s\u0A80-\u0AFF\u0900-\u097F]'), ' ')
-                .split(RegExp(r'\s+'))
-                .where((t) => t.isNotEmpty && !const {
-                  'give', 'me', 'please', 'show', 'tell', 'send', 'share', 'can', 'you',
-                  'i', 'need', 'want', 'where', 'is', 'the', 'what', 'a', 'an', 'of',
-                  'for', 'about', 'with', 'pdf', 'file', 'document', 'download', 'view', 'get',
-                  'krupya', 'aapo', 'moklo', 'batavo', 'de', 'do', 'aap'
-                }.contains(t))
-                .toList();
-            final cleanedSearchQuery = searchTokens.isNotEmpty ? searchTokens.join(' ') : userText;
+            final stopWords = const {
+              'give', 'me', 'please', 'show', 'tell', 'send', 'share', 'can', 'you',
+              'i', 'need', 'want', 'where', 'is', 'the', 'what', 'a', 'an', 'of',
+              'for', 'about', 'with', 'pdf', 'file', 'document', 'download', 'view', 'get',
+              'krupya', 'aapo', 'moklo', 'batavo', 'de', 'do', 'aap',
+              'que', 'question', 'qu', 'q', 'ans', 'answer', 'solve', 'solution',
+              'prashna', 'javab', 'qu1', 'qu2', 'qu3', 'qu4', 'qu5', 'qu6', 'qu7',
+              'q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7', 'q8', 'q9', 'q10'
+            };
 
-            final chunksRes = await client!.rpc('search_document_chunks', params: {
-              'query_text': cleanedSearchQuery,
-              'match_count': 8,
-              'filter_institution_id': instId,
-              'filter_department': null,
-            });
+            // Precision Document Retrieval for Subject + Assignment
+            String? targetSubject;
+            final lower = userText.toLowerCase();
+            if (lower.contains('aipd') || lower.contains('product development')) {
+              targetSubject = 'aipd';
+            } else if (lower.contains('aipe') || lower.contains('prompt')) {
+              targetSubject = 'aipe';
+            } else if (lower.contains('fbc') || lower.contains('blockchain')) {
+              targetSubject = 'fbc';
+            } else if (lower.contains('cdct') || lower.contains('cloud') || lower.contains('data center')) {
+              targetSubject = 'cdct';
+            }
 
-            if (chunksRes != null && (chunksRes as List).isNotEmpty) {
-              ragChunksFound = true;
-              databaseContext += "\n--- RELEVANT DOCUMENT CONTENT (Retrieved via RAG Search) ---\n";
-              
-              // Group chunks by document_id for cleaner context
-              final Map<String, List<Map<String, dynamic>>> groupedChunks = {};
-              for (final chunk in chunksRes) {
-                final docId = chunk['document_id'] as String;
-                groupedChunks.putIfAbsent(docId, () => []);
-                groupedChunks[docId]!.add(chunk);
-              }
+            int? targetAssignNum;
+            final assignMatch = RegExp(r'(?:assignment|unit|unit-)\s*([0-9]+)').firstMatch(lower) ??
+                RegExp(r'([0-9]+)(?:st|nd|rd|th)\s*assignment').firstMatch(lower) ??
+                RegExp(r'([0-9]+)\s*assignment').firstMatch(lower);
+            if (assignMatch != null && assignMatch.group(1) != null) {
+              targetAssignNum = int.tryParse(assignMatch.group(1)!);
+            }
 
-              // Fetch parent document titles for attribution
-              final docIds = groupedChunks.keys.toList();
-              final docsMetaRes = await client!
-                  .from('documents')
-                  .select('id, title, category, subject_name, file_url')
-                  .inFilter('id', docIds);
+            if (targetSubject != null && targetAssignNum != null) {
+              try {
+                final directDocsRes = await client!
+                    .from('documents')
+                    .select('id, title, category, subject_name, file_url')
+                    .ilike('category', '%assignment%')
+                    .ilike('title', '%$targetSubject%');
 
-              final Map<String, Map<String, dynamic>> docsMeta = {};
-              for (final doc in (docsMetaRes as List)) {
-                docsMeta[doc['id']] = doc;
-              }
+                if (directDocsRes.isNotEmpty) {
+                  final matchedDoc = directDocsRes.cast<Map<String, dynamic>>().firstWhere(
+                    (d) {
+                      final t = (d['title'] ?? '').toString().toLowerCase();
+                      return t.contains('assignment $targetAssignNum') ||
+                          t.contains('assignment-$targetAssignNum') ||
+                          t.contains('unit $targetAssignNum') ||
+                          t.contains('unit-$targetAssignNum');
+                    },
+                    orElse: () => {},
+                  );
 
-              for (final entry in groupedChunks.entries) {
-                final meta = docsMeta[entry.key];
-                final docTitle = meta?['title'] ?? 'Unknown Document';
-                final docCategory = meta?['category'] ?? 'document';
-                final subject = entry.value.first['subject_name'] ?? meta?['subject_name'] ?? '';
-                
-                databaseContext += "\n📄 SOURCE: \"$docTitle\" (${docCategory.toString().toUpperCase()})";
-                if (subject.toString().isNotEmpty) databaseContext += " | Subject: $subject";
-                databaseContext += "\n[DOC_ID:${entry.key}]\n";
-                
-                // Sort chunks by chunk_index for coherence
-                entry.value.sort((a, b) => (a['chunk_index'] as int).compareTo(b['chunk_index'] as int));
-                for (final chunk in entry.value) {
-                  databaseContext += "---\n${chunk['chunk_content']}\n";
+                  if (matchedDoc.isNotEmpty) {
+                    final docId = matchedDoc['id'] as String;
+                    final chunks = await client!
+                        .from('document_chunks')
+                        .select('chunk_content, chunk_index')
+                        .eq('document_id', docId)
+                        .order('chunk_index');
+
+                    if (chunks.isNotEmpty) {
+                      ragChunksFound = true;
+                      final docTitle = matchedDoc['title'] ?? 'Assignment';
+                      final subj = matchedDoc['subject_name'] ?? '';
+                      databaseContext += "\n--- TARGET ASSIGNMENT DOCUMENT ---\n";
+                      databaseContext += "📄 SOURCE: \"$docTitle\" | Subject: $subj\n[DOC_ID:$docId]\n";
+                      for (final c in chunks) {
+                        databaseContext += "---\n${c['chunk_content']}\n";
+                      }
+                      databaseContext += "\n";
+                    }
+                  }
                 }
-                databaseContext += "\n";
+              } catch (_) {}
+            }
+
+            if (!ragChunksFound) {
+              final searchTokens = normalizedText
+                  .replaceAll(RegExp(r'[^a-zA-Z0-9\s\u0A80-\u0AFF\u0900-\u097F]'), ' ')
+                  .split(RegExp(r'\s+'))
+                  .where((t) => t.isNotEmpty && !stopWords.contains(t))
+                  .toList();
+              final cleanedSearchQuery = searchTokens.isNotEmpty ? searchTokens.join(' ') : userText;
+
+              final chunksRes = await client!.rpc('search_document_chunks', params: {
+                'query_text': cleanedSearchQuery,
+                'match_count': 8,
+                'filter_institution_id': instId,
+                'filter_department': null,
+              });
+
+              if (chunksRes != null && (chunksRes as List).isNotEmpty) {
+                ragChunksFound = true;
+                databaseContext += "\n--- RELEVANT DOCUMENT CONTENT (Retrieved via RAG Search) ---\n";
+              
+                // Group chunks by document_id for cleaner context
+                final Map<String, List<Map<String, dynamic>>> groupedChunks = {};
+                for (final chunk in chunksRes) {
+                  final docId = chunk['document_id'] as String;
+                  groupedChunks.putIfAbsent(docId, () => []);
+                  groupedChunks[docId]!.add(chunk);
+                }
+
+                // Fetch parent document titles for attribution
+                final docIds = groupedChunks.keys.toList();
+                final docsMetaRes = await client!
+                    .from('documents')
+                    .select('id, title, category, subject_name, file_url')
+                    .inFilter('id', docIds);
+
+                final Map<String, Map<String, dynamic>> docsMeta = {};
+                for (final doc in (docsMetaRes as List)) {
+                  docsMeta[doc['id']] = doc;
+                }
+
+                for (final entry in groupedChunks.entries) {
+                  final meta = docsMeta[entry.key];
+                  final docTitle = meta?['title'] ?? 'Unknown Document';
+                  final docCategory = meta?['category'] ?? 'document';
+                  final subject = entry.value.first['subject_name'] ?? meta?['subject_name'] ?? '';
+                  
+                  databaseContext += "\n📄 SOURCE: \"$docTitle\" (${docCategory.toString().toUpperCase()})";
+                  if (subject.toString().isNotEmpty) databaseContext += " | Subject: $subject";
+                  databaseContext += "\n[DOC_ID:${entry.key}]\n";
+                  
+                  // Sort chunks by chunk_index for coherence
+                  entry.value.sort((a, b) => (a['chunk_index'] as int).compareTo(b['chunk_index'] as int));
+                  for (final chunk in entry.value) {
+                    databaseContext += "---\n${chunk['chunk_content']}\n";
+                  }
+                  databaseContext += "\n";
+                }
               }
             }
           } catch (rpcErr) {

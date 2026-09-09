@@ -24,7 +24,9 @@ class ChatRepository {
         .replaceAll(RegExp(r'\b3rd\b'), '3')
         .replaceAll(RegExp(r'\b4th\b'), '4')
         .replaceAll(RegExp(r'\b5th\b'), '5')
-        .replaceAll(RegExp(r'\b6th\b'), '6');
+        .replaceAll(RegExp(r'\b6th\b'), '6')
+        .replaceAll(RegExp(r'\b(?:que|question|qu|q|prashna|પ્રશ્ન)\s*[0-9]+\b'), '')
+        .replaceAll(RegExp(r'\b(?:ans|answer|solve|solution|જવાબ|ઉકેલ)\b'), '');
 
     final tokens = normalized
         .replaceAll(RegExp(r'[^a-zA-Z0-9\s\u0A80-\u0AFF\u0900-\u097F]'), ' ')
@@ -32,6 +34,67 @@ class ChatRepository {
         .where((t) => t.isNotEmpty && !_conversationalWords.contains(t))
         .toList();
     return tokens.isNotEmpty ? tokens.join(' ') : text;
+  }
+
+  static String _getSubjectFullName(String code) {
+    switch (code.toLowerCase()) {
+      case 'aipd':
+        return 'Artificial Intelligence & Product Development (AIPD)';
+      case 'aipe':
+        return 'Artificial Intelligence & Prompt Engineering (AIPE)';
+      case 'fbc':
+        return 'Fundamentals of Blockchain (FBC)';
+      case 'cdct':
+        return 'Cyber Security & Digital Crime Tracking (CDCT)';
+      case 'dbms':
+        return 'Database Management Systems (DBMS)';
+      case 'cn':
+        return 'Computer Networks (CN)';
+      case 'os':
+        return 'Operating Systems (OS)';
+      default:
+        return code.toUpperCase();
+    }
+  }
+
+  static Map<String, dynamic> _parseAcademicIntent(String text) {
+    final lower = text.toLowerCase();
+
+    // 1. Detect Subject
+    String? subject;
+    if (lower.contains('aipd') || lower.contains('product development') || lower.contains('ai product')) {
+      subject = 'aipd';
+    } else if (lower.contains('aipe') || lower.contains('prompt engineering') || lower.contains('prompt')) {
+      subject = 'aipe';
+    } else if (lower.contains('fbc') || lower.contains('blockchain')) {
+      subject = 'fbc';
+    } else if (lower.contains('cdct') || lower.contains('cloud') || lower.contains('data center')) {
+      subject = 'cdct';
+    } else if (lower.contains('dbms') || lower.contains('database')) {
+      subject = 'dbms';
+    }
+
+    // 2. Detect Assignment / Unit Number
+    int? assignmentNum;
+    final assignMatch = RegExp(r'(?:assignment|unit|unit-)\s*([0-9]+)').firstMatch(lower) ??
+        RegExp(r'([0-9]+)(?:st|nd|rd|th)\s*assignment').firstMatch(lower) ??
+        RegExp(r'([0-9]+)\s*assignment').firstMatch(lower);
+    if (assignMatch != null && assignMatch.group(1) != null) {
+      assignmentNum = int.tryParse(assignMatch.group(1)!);
+    }
+
+    // 3. Detect Question Number
+    int? questionNum;
+    final qMatch = RegExp(r'(?:que|question|qu|q|prashna|પ્રશ્ન)\s*([0-9]+)').firstMatch(lower);
+    if (qMatch != null && qMatch.group(1) != null) {
+      questionNum = int.tryParse(qMatch.group(1)!);
+    }
+
+    return {
+      'subject': subject,
+      'assignmentNumber': assignmentNum,
+      'questionNumber': questionNum,
+    };
   }
 
   Future<ChatMessageModel> processUserMessageAsync({
@@ -214,99 +277,225 @@ class ChatRepository {
         lower.contains('download') ||
         lower.contains('દસ્તાવેજ');
 
+    final academicIntent = _parseAcademicIntent(userText);
+    final String? intentSubject = academicIntent['subject'] as String?;
+    final int? intentAssignNum = academicIntent['assignmentNumber'] as int?;
+
     // A. Priority RAG Document Attachment (When user asks for a document / timetable / assignment)
     if (!isStudentDataQuery && isDocFetchIntent && !isQuestionAnsweringRequest && SupabaseService.client != null) {
       try {
-        final chunksRes = await SupabaseService.client!.rpc('search_document_chunks', params: {
-          'query_text': cleanedQuery.isNotEmpty ? cleanedQuery : userText,
-          'match_count': 3,
-          'filter_institution_id': currentInstId,
-          'filter_department': null, // Search across all campus documents for accurate matching
-        });
+        Map<String, dynamic>? targetDoc;
 
-        if (chunksRes != null && (chunksRes as List).isNotEmpty) {
-          final topChunk = chunksRes.first;
-          final docId = topChunk['document_id'] as String?;
+        // 1. Exact Precision Matching for Subject + Assignment (e.g. "aipd 3rd assignment", "fbc 2nd assignment")
+        if (intentSubject != null && intentAssignNum != null) {
+          final directDocsRes = await SupabaseService.client!
+              .from('documents')
+              .select('*')
+              .ilike('category', '%assignment%')
+              .ilike('title', '%$intentSubject%');
 
-          if (docId != null && docId.isNotEmpty) {
-            final docFetch = await SupabaseService.client!
-                .from('documents')
-                .select('*')
-                .eq('id', docId)
-                .maybeSingle();
-
-            if (docFetch != null) {
-              final cat = (docFetch['category'] ?? 'document').toString();
-              final title = docFetch['title'] ?? 'Academic Document';
-              final dept = docFetch['department'] ?? '';
-              final sem = docFetch['semester'] ?? '';
-              final subject = docFetch['subject_name'] ?? '';
-
-              String categoryDisplay = cat.replaceAll('_', ' ').toUpperCase();
-              String label;
-
-              if (isGujarati) {
-                if (cat == 'timetable') {
-                  label = 'અહીં **$title** ($dept સેમેસ્ટર $sem) માટેનું ઓફિશિયલ સમયપત્રક (Timetable) છે:';
-                } else if (cat == 'lab_manual') {
-                  label = 'અહીં **${subject.isNotEmpty ? subject : title}** ($dept સેમેસ્ટર $sem) માટેની લેબ મેન્યુઅલ છે:';
-                } else if (cat == 'assignment') {
-                  label = 'અહીં **${subject.isNotEmpty ? subject : title}** ($dept સેમેસ્ટર $sem) માટેનું એસાઇનમેન્ટ છે:';
-                } else if (cat == 'circular') {
-                  label = 'અહીં **$title** નો ઓફિશિયલ પરિપત્ર / નોટિસ છે:';
-                } else {
-                  label = 'અહીં તમે માંગેલ **$title** ($categoryDisplay) દસ્તાવેજ છે:';
-                }
-              } else {
-                if (cat == 'timetable') {
-                  label = 'Here is the latest **Timetable** for **$title** ($dept Sem $sem):';
-                } else if (cat == 'lab_manual') {
-                  label = 'Here is the **Lab Manual** for **${subject.isNotEmpty ? subject : title}** ($dept Sem $sem):';
-                } else if (cat == 'assignment') {
-                  label = 'Here is the latest **Assignment** for **${subject.isNotEmpty ? subject : title}** ($dept Sem $sem):';
-                } else if (cat == 'circular') {
-                  label = 'Here is the **Circular / Notice** regarding **$title**:';
-                } else if (cat == 'syllabus') {
-                  label = 'Here is the **Syllabus / Curriculum** for **${subject.isNotEmpty ? subject : title}** ($dept Sem $sem):';
-                } else {
-                  label = 'Here is the **$title** ($categoryDisplay) you requested:';
-                }
-              }
-
-              return ChatMessageModel(
-                id: DateTime.now().millisecondsSinceEpoch.toString(),
-                sender: ChatSender.ai,
-                text: label,
-                timestamp: DateTime.now(),
-                dataType: cat == 'timetable' ? ChatDataType.timetable : ChatDataType.none,
-                payload: {
-                  'fileUrl': docFetch['file_url'],
-                  'title': title,
-                  'category': categoryDisplay,
-                  'subject': subject,
-                  'department': dept,
-                  'semester': sem,
-                },
-              );
+          if (directDocsRes.isNotEmpty) {
+            final match = directDocsRes.cast<Map<String, dynamic>>().firstWhere(
+              (d) {
+                final t = (d['title'] ?? '').toString().toLowerCase();
+                return t.contains('assignment $intentAssignNum') ||
+                    t.contains('assignment-$intentAssignNum') ||
+                    t.contains('unit $intentAssignNum') ||
+                    t.contains('unit-$intentAssignNum');
+              },
+              orElse: () => {},
+            );
+            if (match.isNotEmpty) {
+              targetDoc = match;
             }
           }
+
+          // If the user explicitly requested Assignment X for Subject Y, and it does NOT exist in DB (e.g. AIPD Assignment 3),
+          // DO NOT attach an unrelated assignment! Return the helpful missing message immediately!
+          if (targetDoc == null) {
+            final String subName = _getSubjectFullName(intentSubject);
+            final String notFoundMsg = isGujarati
+                ? 'ક્ષમા કરશો, **$subName** માટે **Assignment $intentAssignNum** હજી સુધી અપલોડ થયો નથી. હાલમાં ઉપલબ્ધ એસાઇનમેન્ટ તપાસો અથવા ફેકલ્ટીનો સંપર્ક કરો.'
+                : 'I searched the campus repository, but **Assignment $intentAssignNum** for **$subName** is not uploaded yet. Currently, **Assignment 1** and **Assignment 2** are available. Would you like to view Assignment 1 or 2?';
+            return ChatMessageModel(
+              id: DateTime.now().millisecondsSinceEpoch.toString(),
+              sender: ChatSender.ai,
+              text: notFoundMsg,
+              timestamp: DateTime.now(),
+              dataType: ChatDataType.none,
+            );
+          }
+        }
+
+        // 2. Standard Chunk Search (for timetables, lab manuals, or general queries)
+        if (targetDoc == null) {
+          final chunksRes = await SupabaseService.client!.rpc('search_document_chunks', params: {
+            'query_text': cleanedQuery.isNotEmpty ? cleanedQuery : userText,
+            'match_count': 3,
+            'filter_institution_id': currentInstId,
+            'filter_department': null,
+          });
+
+          if (chunksRes != null && (chunksRes as List).isNotEmpty) {
+            final topChunk = chunksRes.first;
+            final docId = topChunk['document_id'] as String?;
+            if (docId != null && docId.isNotEmpty) {
+              final docFetch = await SupabaseService.client!
+                  .from('documents')
+                  .select('*')
+                  .eq('id', docId)
+                  .maybeSingle();
+              if (docFetch != null) {
+                if (intentAssignNum != null) {
+                  final t = (docFetch['title'] ?? '').toString().toLowerCase();
+                  if (t.contains('assignment $intentAssignNum') ||
+                      t.contains('assignment-$intentAssignNum') ||
+                      t.contains('unit $intentAssignNum') ||
+                      t.contains('unit-$intentAssignNum')) {
+                    targetDoc = Map<String, dynamic>.from(docFetch);
+                  }
+                } else {
+                  targetDoc = Map<String, dynamic>.from(docFetch);
+                }
+              }
+            }
+          }
+        }
+
+        if (targetDoc != null) {
+          final cat = (targetDoc['category'] ?? 'document').toString();
+          final title = targetDoc['title'] ?? 'Academic Document';
+          final dept = targetDoc['department'] ?? '';
+          final sem = targetDoc['semester'] ?? '';
+          final subject = targetDoc['subject_name'] ?? '';
+
+          String categoryDisplay = cat.replaceAll('_', ' ').toUpperCase();
+          String label;
+
+          if (isGujarati) {
+            if (cat == 'timetable') {
+              label = 'અહીં **$title** ($dept સેમેસ્ટર $sem) માટેનું ઓફિશિયલ સમયપત્રક (Timetable) છે:';
+            } else if (cat == 'lab_manual') {
+              label = 'અહીં **${subject.isNotEmpty ? subject : title}** ($dept સેમેસ્ટર $sem) માટેની લેબ મેન્યુઅલ છે:';
+            } else if (cat == 'assignment') {
+              label = 'અહીં **${subject.isNotEmpty ? subject : title}** ($dept સેમેસ્ટર $sem) માટેનું એસાઇનમેન્ટ છે:';
+            } else if (cat == 'circular') {
+              label = 'અહીં **$title** નો ઓફિશિયલ પરિપત્ર / નોટિસ છે:';
+            } else {
+              label = 'અહીં તમે માંગેલ **$title** ($categoryDisplay) દસ્તાવેજ છે:';
+            }
+          } else {
+            if (cat == 'timetable') {
+              label = 'Here is the latest **Timetable** for **$title** ($dept Sem $sem):';
+            } else if (cat == 'lab_manual') {
+              label = 'Here is the **Lab Manual** for **${subject.isNotEmpty ? subject : title}** ($dept Sem $sem):';
+            } else if (cat == 'assignment') {
+              label = 'Here is the latest **Assignment** for **${subject.isNotEmpty ? subject : title}** ($dept Sem $sem):';
+            } else if (cat == 'circular') {
+              label = 'Here is the **Circular / Notice** regarding **$title**:';
+            } else if (cat == 'syllabus') {
+              label = 'Here is the **Syllabus / Curriculum** for **${subject.isNotEmpty ? subject : title}** ($dept Sem $sem):';
+            } else {
+              label = 'Here is the **$title** ($categoryDisplay) you requested:';
+            }
+          }
+
+          return ChatMessageModel(
+            id: DateTime.now().millisecondsSinceEpoch.toString(),
+            sender: ChatSender.ai,
+            text: label,
+            timestamp: DateTime.now(),
+            dataType: cat == 'timetable' ? ChatDataType.timetable : ChatDataType.none,
+            payload: {
+              'fileUrl': targetDoc['file_url'],
+              'title': title,
+              'category': categoryDisplay,
+              'subject': subject,
+              'department': dept,
+              'semester': sem,
+            },
+          );
         }
       } catch (e) {
         // Fallback to Groq AI
       }
     }
 
-    // B. RAG Full-Text Search for Question Answering
-    if (isQuestionAnsweringRequest && SupabaseService.client != null) {
-      try {
-        final chunksRes = await SupabaseService.client!.rpc('search_document_chunks', params: {
-          'query_text': cleanedQuery.isNotEmpty ? cleanedQuery : userText,
-          'match_count': 8,
-          'filter_institution_id': currentInstId,
-          'filter_department': null,
-        });
+    // B. Academic Question Answering (GTU Direct Solver + RAG Groq)
+    if (isQuestionAnsweringRequest) {
+      // 1. High-Precision Direct Solver: If user asks for an assignment question
+      // (e.g. "fbc 2nd assignment que 1 ans", "aipd 1st assignment qu1 ans")
+      Map<String, dynamic>? matchingDoc;
+      if (SupabaseService.client != null && intentSubject != null) {
+        try {
+          final directDocsRes = await SupabaseService.client!
+              .from('documents')
+              .select('*')
+              .ilike('category', '%assignment%')
+              .ilike('title', '%$intentSubject%');
 
-        if (chunksRes != null && (chunksRes as List).isNotEmpty) {
+          if (directDocsRes.isNotEmpty) {
+            if (intentAssignNum != null) {
+              final match = directDocsRes.cast<Map<String, dynamic>>().firstWhere(
+                (d) {
+                  final t = (d['title'] ?? '').toString().toLowerCase();
+                  return t.contains('assignment $intentAssignNum') ||
+                      t.contains('assignment-$intentAssignNum') ||
+                      t.contains('unit $intentAssignNum') ||
+                      t.contains('unit-$intentAssignNum');
+                },
+                orElse: () => {},
+              );
+              if (match.isNotEmpty) matchingDoc = match;
+            } else {
+              matchingDoc = Map<String, dynamic>.from(directDocsRes.first);
+            }
+          }
+        } catch (_) {}
+      }
+
+      final String solverSubject = matchingDoc?['subject_name'] ??
+          (intentSubject != null ? _getSubjectFullName(intentSubject) : 'Information Technology');
+      final String solverTitle = matchingDoc?['title'] ??
+          (intentAssignNum != null ? 'Assignment $intentAssignNum' : '');
+
+      final academicAnswer = AcademicSolverService.solveAssignmentQuestion(
+        userText: userText,
+        activeSubject: solverSubject,
+        activeDocumentTitle: solverTitle,
+        language: isGujarati ? 'GUJARATI' : 'ENGLISH',
+      );
+
+      // If AcademicSolverService has a specific, non-generic GTU answer, return it immediately with the PDF attached!
+      final bool isSpecificAnswer = academicAnswer.isNotEmpty &&
+          !academicAnswer.contains('Assignment Solution\n\n**1. Subject Overview:**');
+
+      if (isSpecificAnswer) {
+        Map<String, dynamic>? attachedPayload;
+        if (matchingDoc != null) {
+          attachedPayload = {
+            'fileUrl': matchingDoc['file_url'],
+            'title': matchingDoc['title'],
+            'category': (matchingDoc['category'] ?? 'ASSIGNMENT').toString().replaceAll('_', ' ').toUpperCase(),
+            'subject': matchingDoc['subject_name'] ?? solverSubject,
+            'department': matchingDoc['department'] ?? '',
+            'semester': matchingDoc['semester'] ?? '',
+          };
+        }
+
+        return ChatMessageModel(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          sender: ChatSender.ai,
+          text: academicAnswer,
+          timestamp: DateTime.now(),
+          dataType: attachedPayload != null ? ChatDataType.timetable : ChatDataType.none,
+          payload: attachedPayload,
+        );
+      }
+
+      // 2. Groq AI RAG with retrieved chunks (for general or conceptual questions)
+      if (SupabaseService.client != null) {
+        try {
           final groqReply = await SupabaseService.queryGroqDirect(
             userText: userText,
             collegeName: college.name,
@@ -347,6 +536,17 @@ class ChatRepository {
               }
             }
 
+            if (attachedPayload == null && matchingDoc != null) {
+              attachedPayload = {
+                'fileUrl': matchingDoc['file_url'],
+                'title': matchingDoc['title'],
+                'category': (matchingDoc['category'] ?? 'ASSIGNMENT').toString().replaceAll('_', ' ').toUpperCase(),
+                'subject': matchingDoc['subject_name'] ?? solverSubject,
+                'department': matchingDoc['department'] ?? '',
+                'semester': matchingDoc['semester'] ?? '',
+              };
+            }
+
             return ChatMessageModel(
               id: DateTime.now().millisecondsSinceEpoch.toString(),
               sender: ChatSender.ai,
@@ -356,9 +556,7 @@ class ChatRepository {
               payload: attachedPayload,
             );
           }
-        }
-      } catch (e) {
-        // Fallback to Groq Direct AI
+        } catch (_) {}
       }
     }
 
