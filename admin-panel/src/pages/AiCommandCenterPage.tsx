@@ -25,6 +25,7 @@ import type {
   ExtractedDocMetadata, 
   ExtractedAlertMetadata
 } from '../lib/groq'
+import { MarkdownRenderer, normalizeMarkdownText } from '../components/MarkdownRenderer'
 
 export interface BatchDocumentItem {
   id: string
@@ -290,6 +291,7 @@ export default function AiCommandCenterPage() {
   const [newTagInput, setNewTagInput] = useState('')
 
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const chatEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -321,8 +323,11 @@ export default function AiCommandCenterPage() {
 
   // Handle AI analysis & sending message
   const handleSendMessage = async (promptOverride?: string) => {
-    const textToSend = promptOverride || inputPrompt.trim()
-    if (!textToSend && selectedFiles.length === 0) return
+    const rawInput = promptOverride || inputPrompt.trim()
+    if (!rawInput && selectedFiles.length === 0) return
+
+    // Auto-normalize any flattened markdown tables or schedules like ChatGPT
+    const textToSend = normalizeMarkdownText(rawInput)
 
     const currentFiles = [...selectedFiles]
     const filesMetadata = currentFiles.map(f => ({ name: f.name, size: f.size }))
@@ -338,6 +343,9 @@ export default function AiCommandCenterPage() {
 
     setMessages(prev => [...prev, userMessage])
     setInputPrompt('')
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto'
+    }
     setSelectedFiles([])
     setIsProcessing(true)
 
@@ -874,7 +882,7 @@ export default function AiCommandCenterPage() {
                   </div>
                 )}
 
-                <div className="whitespace-pre-wrap">{msg.text}</div>
+                <MarkdownRenderer content={msg.text} isUser={isAdmin} />
 
                 <div
                   className={`text-[10px] mt-1.5 ${
@@ -1502,16 +1510,36 @@ export default function AiCommandCenterPage() {
             <Paperclip size={18} />
           </button>
 
-          <input
-            type="text"
+          <textarea
+            ref={textareaRef}
+            rows={1}
             value={inputPrompt}
-            onChange={(e) => setInputPrompt(e.target.value)}
+            onChange={(e) => {
+              setInputPrompt(e.target.value)
+              e.target.style.height = 'auto'
+              e.target.style.height = Math.min(e.target.scrollHeight, 180) + 'px'
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault()
+                handleSendMessage()
+              }
+            }}
+            onPaste={() => {
+              setTimeout(() => {
+                if (textareaRef.current) {
+                  textareaRef.current.style.height = 'auto'
+                  textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 180) + 'px'
+                }
+              }, 0)
+            }}
             placeholder={
               selectedFiles.length > 0
                 ? `Analyze all ${selectedFiles.length} attached documents (or add optional notes like "Sem 5 IT")...`
-                : 'e.g. "these are sem 5 IT assignments" or "Holiday notice for tomorrow"...'
+                : 'Paste timetable, syllabus, exam schedule, or instructions (Shift+Enter for newline)...'
             }
-            className="flex-1 bg-transparent border-none px-3 text-sm text-text-primary placeholder:text-text-muted focus:outline-none"
+            className="flex-1 bg-transparent border-none px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none resize-none leading-relaxed"
+            style={{ maxHeight: '180px', minHeight: '40px' }}
             disabled={isProcessing}
           />
 

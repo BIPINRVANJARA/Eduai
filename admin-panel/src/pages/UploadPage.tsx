@@ -4,7 +4,8 @@ import FileUploader from '../components/FileUploader'
 import { supabase } from '../config/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { parseAdminUploadPrompt, type ExtractedDocMetadata } from '../lib/groq'
-import { indexDocumentForRag, type RagIndexResult } from '../lib/ragIndexer'
+import { indexDocumentForRag } from '../lib/ragIndexer'
+import { normalizeMarkdownText } from '../components/MarkdownRenderer'
 
 const CATEGORIES = [
   { value: 'timetable', label: 'Timetable' },
@@ -72,12 +73,13 @@ export default function UploadPage() {
 
   // Handle AI Analysis
   const handleAnalyzeWithAI = async (promptText?: string) => {
-    const textToUse = promptText || adminPrompt
-    if (!textToUse.trim()) {
+    const rawText = promptText || adminPrompt
+    if (!rawText.trim()) {
       setError('Please enter a description or prompt for the AI to analyze.')
       return
     }
 
+    const textToUse = normalizeMarkdownText(rawText)
     setIsAnalyzing(true)
     setError('')
     try {
@@ -163,6 +165,8 @@ export default function UploadPage() {
           department: extractedData.department,
           semester: extractedData.semester,
           subjectName: extractedData.subject_name,
+          title: extractedData.title,
+          category: extractedData.category,
         })
 
         if (ragResult.success) {
@@ -256,6 +260,8 @@ export default function UploadPage() {
           department: formData.department,
           semester: formData.semester,
           subjectName: formData.subject_name || formData.title,
+          title: formData.title,
+          category: formData.category,
         })
 
         if (ragResult.success) {

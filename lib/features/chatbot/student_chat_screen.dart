@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/app_theme.dart';
@@ -226,13 +227,10 @@ class _StudentChatScreenState extends State<StudentChatScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              message.text,
-              style: TextStyle(
-                color: message.isUser ? AppColors.textDark : AppColors.textPrimary,
-                fontSize: 14,
-                fontWeight: message.isUser ? FontWeight.bold : FontWeight.normal,
-              ),
+            MarkdownBody(
+              data: _normalizeMarkdown(message.text),
+              selectable: true,
+              styleSheet: message.isUser ? _userMarkdownStyleSheet : _aiMarkdownStyleSheet,
             ),
             if (message.url != null) ...[
               const SizedBox(height: 12),
@@ -329,4 +327,180 @@ class _StudentChatScreenState extends State<StudentChatScreen> {
       ),
     );
   }
+
+  String _normalizeMarkdown(String raw) {
+    if (raw.isEmpty) return '';
+    String text = raw;
+
+    // 1. Double pipes '||' indicate table row breaks from flattened pastes!
+    text = text.replaceAll(RegExp(r'\|\|\s*'), '|\n| ');
+
+    // 2. Separate title and bold subtitle from table start
+    text = text.replaceAllMapped(
+      RegExp(r'(#{1,6}\s+[^\n*|]+)\s+(\*\*[^*]+\*\*)'),
+      (m) => '${m[1]}\n\n${m[2]}',
+    );
+
+    // 3. Separate non-table text preceding a table header on the same line
+    text = text.replaceAllMapped(
+      RegExp(r'^([^|\n]+?)\s*(\|(?:\s*[^|\n]+\s*\|)+)', multiLine: true),
+      (m) => '${m[1]}\n\n${m[2]}',
+    );
+
+    // 4. Ensure table rows that end without a pipe get one
+    text = text.replaceAllMapped(
+      RegExp(r'^(\|[^\n]+[^|\s])\s*$', multiLine: true),
+      (m) => '${m[1]} |',
+    );
+
+    // 5. Ensure divider row starts and ends with pipes
+    text = text.replaceAllMapped(
+      RegExp(r'^([-:\s|]{3,})$', multiLine: true),
+      (m) {
+        String clean = m[1]!.trim();
+        if (!clean.startsWith('|')) clean = '| $clean';
+        if (!clean.endsWith('|')) clean = '$clean |';
+        return clean;
+      },
+    );
+
+    // 6. Clean up any excess newlines
+    text = text.replaceAll(RegExp(r'\n{3,}'), '\n\n');
+
+    return text.trim();
+  }
+
+  MarkdownStyleSheet get _userMarkdownStyleSheet => MarkdownStyleSheet(
+    p: const TextStyle(
+      color: AppColors.textDark,
+      fontSize: 14,
+      height: 1.45,
+      fontWeight: FontWeight.w600,
+      letterSpacing: -0.1,
+    ),
+    strong: const TextStyle(
+      color: AppColors.textDark,
+      fontWeight: FontWeight.w900,
+    ),
+    em: const TextStyle(
+      color: AppColors.textDark,
+      fontStyle: FontStyle.italic,
+    ),
+    h1: const TextStyle(
+      color: AppColors.textDark,
+      fontSize: 17,
+      fontWeight: FontWeight.w900,
+      height: 1.4,
+    ),
+    h2: const TextStyle(
+      color: AppColors.textDark,
+      fontSize: 15,
+      fontWeight: FontWeight.w800,
+      height: 1.4,
+    ),
+    h3: const TextStyle(
+      color: AppColors.textDark,
+      fontSize: 14,
+      fontWeight: FontWeight.w700,
+      height: 1.4,
+    ),
+    listBullet: const TextStyle(
+      color: AppColors.textDark,
+      fontSize: 14,
+      fontWeight: FontWeight.bold,
+    ),
+    tableHead: const TextStyle(
+      color: AppColors.textDark,
+      fontWeight: FontWeight.w900,
+      fontSize: 12,
+    ),
+    tableBody: const TextStyle(
+      color: AppColors.textDark,
+      fontSize: 12,
+      fontWeight: FontWeight.w600,
+    ),
+    tableBorder: TableBorder.all(
+      color: const Color(0x33000000),
+      width: 1,
+    ),
+    tableHeadAlign: TextAlign.left,
+    tableCellsPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+    code: const TextStyle(
+      color: AppColors.textDark,
+      backgroundColor: Color(0x22000000),
+      fontFamily: 'monospace',
+      fontSize: 12,
+      fontWeight: FontWeight.w700,
+    ),
+    codeblockDecoration: BoxDecoration(
+      color: const Color(0x22000000),
+      borderRadius: BorderRadius.circular(8),
+    ),
+  );
+
+  MarkdownStyleSheet get _aiMarkdownStyleSheet => MarkdownStyleSheet(
+    p: const TextStyle(
+      color: AppColors.textPrimary,
+      fontSize: 14,
+      height: 1.55,
+      letterSpacing: -0.1,
+    ),
+    strong: const TextStyle(
+      color: Colors.white,
+      fontWeight: FontWeight.w700,
+    ),
+    em: const TextStyle(
+      color: AppColors.textSecondary,
+      fontStyle: FontStyle.italic,
+    ),
+    h1: const TextStyle(
+      color: AppColors.primary,
+      fontSize: 18,
+      fontWeight: FontWeight.bold,
+      height: 1.4,
+    ),
+    h2: const TextStyle(
+      color: AppColors.primary,
+      fontSize: 16,
+      fontWeight: FontWeight.bold,
+      height: 1.4,
+    ),
+    h3: const TextStyle(
+      color: AppColors.primary,
+      fontSize: 15,
+      fontWeight: FontWeight.w700,
+      height: 1.4,
+    ),
+    listBullet: const TextStyle(
+      color: AppColors.primary,
+      fontSize: 14,
+      fontWeight: FontWeight.bold,
+    ),
+    tableHead: const TextStyle(
+      color: AppColors.primary,
+      fontWeight: FontWeight.bold,
+      fontSize: 12,
+    ),
+    tableBody: const TextStyle(
+      color: AppColors.textPrimary,
+      fontSize: 12,
+    ),
+    tableBorder: TableBorder.all(
+      color: AppColors.cardBorder,
+      width: 1,
+    ),
+    tableHeadAlign: TextAlign.left,
+    tableCellsPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+    code: const TextStyle(
+      color: AppColors.primary,
+      backgroundColor: AppColors.surfaceLight,
+      fontFamily: 'monospace',
+      fontSize: 12,
+    ),
+    codeblockDecoration: BoxDecoration(
+      color: const Color(0xFF0D131F),
+      borderRadius: BorderRadius.circular(8),
+      border: Border.all(color: AppColors.cardBorder),
+    ),
+  );
 }

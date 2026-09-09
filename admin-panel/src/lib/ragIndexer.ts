@@ -32,6 +32,8 @@ export async function indexDocumentForRag(
     department: string;
     semester: string;
     subjectName: string;
+    title?: string;
+    category?: string;
   }
 ): Promise<RagIndexResult> {
   // Only process PDFs
@@ -92,6 +94,10 @@ export async function indexDocumentForRag(
     const BATCH_SIZE = 20;
     let totalInserted = 0;
 
+    const header = metadata.title
+      ? `DOCUMENT: ${metadata.title}\nSUBJECT: ${metadata.subjectName || ''} | SEMESTER ${metadata.semester || ''} ${metadata.department || ''}\nCATEGORY: ${(metadata.category || 'DOCUMENT').toUpperCase()}\n\n`
+      : '';
+
     for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
       const batch = chunks.slice(i, i + BATCH_SIZE).map((chunk: TextChunk) => ({
         document_id: documentId,
@@ -100,7 +106,7 @@ export async function indexDocumentForRag(
         semester: metadata.semester,
         subject_name: metadata.subjectName,
         chunk_index: chunk.chunkIndex,
-        chunk_content: chunk.content,
+        chunk_content: `${header}${chunk.content}`,
         token_count: chunk.tokenCount,
       }));
 
