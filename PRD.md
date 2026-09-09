@@ -1,6 +1,6 @@
 # 📄 PRODUCT REQUIREMENTS DOCUMENT (PRD)
 
-## **Eduai (CampusOS): Agentic Campus Intelligence & Parent-Institution Operating System**
+## **Edu AI: Intelligent Academic & Parent-Institution Operating System**
 
 ---
 
@@ -8,7 +8,7 @@
 
 | Document Property | Specification |
 | :--- | :--- |
-| **Product Name** | **Eduai (CampusOS)** |
+| **Product Name** | **Edu AI** |
 | **Version** | **3.0.0 (Enterprise Academic OS & Production Agentic RAG)** |
 | **Document Status** | **Approved & Active in Production** |
 | **Release Date** | **September 2026** |
@@ -18,9 +18,9 @@
 | **Core Platforms** | Native Mobile App (Android/iOS via Flutter 3.x), Responsive Web Admin Portal (React 18 + Vite + TailwindCSS) |
 
 ### 1.1 Executive Summary
-**Eduai (CampusOS)** is an enterprise-grade, multi-tenant Academic Operating System engineered for universities, polytechnic institutions, and autonomous colleges. It eliminates the traditional operational friction between **Students, Parents, Faculty/HODs, and Institutional Directors**.
+**Edu AI** is an enterprise-grade, multi-tenant Academic Operating System engineered for universities, polytechnic institutions, and autonomous colleges. It eliminates the traditional operational friction between **Students, Parents, Faculty/HODs, and Institutional Directors**.
 
-Powered by a **Zero-Cost, Full RAG (Retrieval-Augmented Generation) Pipeline**, **High-Precision GTU Syllabus Solvers**, **Ultra-Fast Groq LPU Inference (~300 tokens/sec)**, and **Supabase Real-Time Cloud Infrastructure**, Eduai guarantees:
+Powered by a **Zero-Cost, Full RAG (Retrieval-Augmented Generation) Pipeline**, **High-Precision GTU Syllabus Solvers**, **Ultra-Fast Groq LPU Inference (~300 tokens/sec)**, and **Supabase Real-Time Cloud Infrastructure**, Edu AI guarantees:
 1. **Zero-Hallucination Academic Question Solving**: Instant, exam-ready, step-by-step solutions for official university assignments (AIPE, AIPD, FBC, CDCT) paired with live PDF document cards.
 2. **Instant Exam Schedule & Timetable Resolution**: Full Markdown timetable tables (dates, days, timings, subject codes, rules) coupled with downloadable signed circulars and conflict-free class timetables.
 3. **Live Attendance & GTU Exam Eligibility Verification**: Real-time evaluation against the mandatory GTU $\ge 75\%$ attendance threshold, flagging defaulters before detention deadlines.
@@ -315,7 +315,7 @@ erDiagram
 
 ```mermaid
 gantt
-    title Eduai Product Development Milestones
+    title Edu AI Product Development Milestones
     dateFormat  YYYY-MM-DD
     section Phase 1 (Completed)
     Multi-Tenant Core Architecture & RLS         :done, 2026-08-01, 2026-08-15
@@ -334,4 +334,4 @@ gantt
 
 ---
 
-*This document serves as the authoritative, production-grade product specification for **Eduai (CampusOS)**.*
+*This document serves as the authoritative, production-grade product specification for **Edu AI**.*
