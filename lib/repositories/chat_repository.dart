@@ -608,6 +608,16 @@ class ChatRepository {
             'department': matchingDoc['department'] ?? '',
             'semester': matchingDoc['semester'] ?? '',
           };
+        } else if (intentSubject != null) {
+          final sName = _getSubjectFullName(intentSubject);
+          attachedPayload = {
+            'fileUrl': '',
+            'title': '$sName ${intentAssignNum != null ? 'Assignment $intentAssignNum' : 'Assignment'}',
+            'category': 'ASSIGNMENT',
+            'subject': sName,
+            'department': 'Information Technology',
+            'semester': '5',
+          };
         }
 
         return ChatMessageModel(

@@ -60,11 +60,13 @@ class AcademicSolverService {
       }
     }
 
+    final bool isUnit4 = docLower.contains('assignment 4') || docLower.contains('assignment4') || docLower.contains('unit 4') || docLower.contains('unit-4') || lower.contains('assignment 4') || lower.contains('4th assignment') || lower.contains('4 assignment');
     final bool isUnit3 = docLower.contains('assignment 3') || docLower.contains('assignment3') || docLower.contains('unit 3') || docLower.contains('unit-3') || lower.contains('assignment 3') || lower.contains('3rd assignment') || lower.contains('3 assignment');
     final bool isUnit2 = docLower.contains('assignment 2') || docLower.contains('assignment2') || docLower.contains('unit 2') || docLower.contains('unit-2') || lower.contains('assignment 2') || lower.contains('2nd assignment') || lower.contains('2 assignment');
-    final bool isAipd = lower.contains('aipd') || docLower.contains('aipd') || docLower.contains('product development') || docLower.contains('product design');
+    final bool isUnit1 = docLower.contains('assignment 1') || docLower.contains('assignment1') || docLower.contains('unit 1') || docLower.contains('unit-1') || lower.contains('assignment 1') || lower.contains('1st assignment') || lower.contains('1 assignment');
+    final bool isAipd = lower.contains('aipd') || docLower.contains('aipd') || docLower.contains('product development') || docLower.contains('product design') || lower.contains('product development') || lower.contains('product design');
     final bool isAipe = lower.contains('aipe') || lower.contains('prompt') || docLower.contains('aipe') || docLower.contains('prompt');
-    final bool isCdct = lower.contains('cdct') || lower.contains('cyber') || docLower.contains('cdct') || docLower.contains('cyber') || docLower.contains('cloud');
+    final bool isCdct = lower.contains('cdct') || lower.contains('cyber') || lower.contains('cloud') || lower.contains('data center') || lower.contains('virtualization') || docLower.contains('cdct') || docLower.contains('cyber') || docLower.contains('cloud');
     final bool isFbc = lower.contains('fbc') || lower.contains('blockchain') || docLower.contains('fbc') || docLower.contains('blockchain') || docLower.contains('foundation of blockchain');
     final bool isDbms = lower.contains('dbms') || docLower.contains('dbms') || docLower.contains('database');
     final bool isCn = lower.contains('cn') || docLower.contains('network');
@@ -73,13 +75,29 @@ class AcademicSolverService {
     if (isAipd) {
       if (isUnit2) {
         return _solveAipdUnit2Question(questionNumber, language);
+      } else if (isUnit1) {
+        return _solveAipdUnit1Question(questionNumber, language);
       } else {
         return _solveAipdUnit1Question(questionNumber, language);
       }
     } else if (isAipe) {
-      return _solveAipeQuestion(questionNumber, language);
+      if (isUnit2) {
+        return _solveAipeUnit2Question(questionNumber, language);
+      } else if (isUnit3) {
+        return _solveAipeUnit3Question(questionNumber, language);
+      } else if (isUnit4) {
+        return _solveAipeUnit4Question(questionNumber, language);
+      } else {
+        return _solveAipeUnit1Question(questionNumber, language);
+      }
     } else if (isCdct) {
-      return _solveGenericQuestion('Cyber Security and Digital Crime Tracking (CDCT)', questionNumber, language);
+      if (isUnit3) {
+        return _solveCdctUnit3Question(questionNumber, language);
+      } else if (isUnit4) {
+        return _solveCdctUnit4Question(questionNumber, language);
+      } else {
+        return _solveCdctUnit2Question(questionNumber, language);
+      }
     } else if (isFbc) {
       if (isUnit3) {
         return _solveFbcUnit3Question(questionNumber, language);
@@ -1190,14 +1208,722 @@ A **Merkle Tree** (Binary Hash Tree) is a cryptographic structure where each lea
 Enables **Simple Payment Verification (SPV)** allowing light nodes to verify transaction membership with logarithmic $O(\log N)$ proof complexity.''';
   }
 
-  static String _solveAipeQuestion(int qNum, String lang) {
-    return '''### 📝 Question $qNum: Artificial Intelligence & Prompt Engineering (AIPE)
+  // =========================================================================
+  // AIPE ASSIGNMENT 2 (UNIT-2) - OFFICIAL GTU QUESTIONS (GPH HIMMATNAGAR)
+  // =========================================================================
+  static String _solveAipeUnit2Question(int qNum, String lang) {
+    switch (qNum) {
+      case 1:
+        return r'''### 📝 Question 1: Define LLM (Large Language Model)
+**Subject:** Artificial Intelligence with Prompt Engineering (AIPE - DI05016011) | **Unit 2: Large Language Models**
 
-**Prompting Frameworks:**
-• Zero-Shot Prompting: Direct instruction without examples.
-• Few-Shot Prompting: 2-5 example input-output demonstration pairs.
-• Chain-of-Thought (CoT): Step-by-step reasoning instructions.''';
+---
+
+#### 1. Definition of Large Language Model (LLM):
+A **Large Language Model (LLM)** is an advanced Artificial Intelligence deep learning model built upon the **Transformer neural network architecture**. It is pre-trained on massive datasets encompassing billions to trillions of textual tokens. Armed with hundreds of millions to hundreds of billions of tunable **parameters**, an LLM possesses the capability to understand, interpret, summarize, predict, and generate human natural language with near-human fluency.
+
+#### 2. Key Characteristics:
+• **Transformer Foundation:** Leverages Multi-Head Self-Attention mechanisms to process input sequences in parallel, capturing long-range contextual dependencies between words.
+• **Massive Scale & Pre-training:** Features billions of parameters (e.g., LLaMA-3 8B/70B, GPT-4) trained on web-scale text corpora.
+• **Autoregressive Generation:** Predicts output token-by-token using the conditional probability distribution:
+  $P(w_t \mid w_1, w_2, \dots, w_{t-1})$
+• **Generalization:** Performs zero-shot and few-shot reasoning, code generation, summarization, and translation without requiring task-specific retraining.
+
+#### 3. Core Working Stages:
+1. **Tokenization:** Converts input text into discrete numeric tokens using Byte-Pair Encoding (BPE).
+2. **Embedding:** Projects discrete tokens into high-dimensional continuous semantic vector spaces.
+3. **Self-Attention & Transformer Layers:** Dynamically computes contextual weights across all tokens.
+4. **Softmax Output:** Computes probability distribution over vocabulary to generate next words.
+
+#### 4. Prominent Real-World Examples:
+• **OpenAI GPT Series:** GPT-3.5, GPT-4, GPT-4o
+• **Meta LLaMA Series:** LLaMA-2, LLaMA-3 (Open-weights foundation models)
+• **Google Gemini Series:** Multimodal foundation models (Gemini Flash, Pro, Ultra)
+• **Anthropic Claude Series:** Claude 3.5 Sonnet / Opus
+
+---
+💡 *Course In-Charge:* Mr. H. I. Rathod & Mr. C. D. Suthar, Lecturer in IT, Govt. Polytechnic, Himatnagar.''';
+
+      case 2:
+        return r'''### 📝 Question 2: Describe Training Data and Parameters in LLM
+**Subject:** Artificial Intelligence with Prompt Engineering (AIPE - DI05016011) | **Unit 2: Large Language Models**
+
+---
+
+#### 1. Training Data in LLM:
+• **Definition:** The massive volume of textual and code data fed into the neural network during the self-supervised pre-training phase.
+• **Key Sources:**
+  - *Web Crawls:* Common Crawl, Wikipedia, news articles.
+  - *Books & Literature:* Public domain books, research papers (arXiv).
+  - *Source Code:* Open-source GitHub repositories, technical documentation.
+• **Data Curation Pipeline:**
+  1. *De-duplication:* Removing redundant text to avoid model memorization.
+  2. *Quality Filtering:* Removing toxic content, spam, and corrupted text.
+  3. *Tokenization:* Splitting curated text into sub-word tokens (often 1 token ≈ 0.75 words).
+• **Dataset Size:** Modern LLMs are trained on **1 trillion to 15+ trillion tokens** (e.g., LLaMA-3 was trained on 15T tokens).
+
+#### 2. Parameters in LLM:
+• **Definition:** The internal configurable numerical values (weights and biases) of the neural network that the model learns during the optimization and training process.
+• **Significance:** Parameters store the model's factual knowledge, linguistic rules, reasoning capabilities, and stylistic nuance.
+• **Parameter Scale:**
+  - *Small/Edge Models:* 1B – 7B parameters (e.g., LLaMA-3 8B, Mistral 7B).
+  - *Medium Models:* 13B – 70B parameters (e.g., LLaMA-3 70B).
+  - *Frontier / Mega Models:* 100B – 1.8T+ parameters (e.g., GPT-4 MoE).
+• **Storage & Inference:** Each parameter in FP16 precision takes 2 bytes of GPU VRAM (e.g., a 7B model requires ~14 GB of GPU RAM). Quantization (INT8 / INT4) reduces memory footprint for mobile and edge deployment.''';
+
+      case 3:
+        return r'''### 📝 Question 3: Explain Tokens and Embeddings in LLM with Suitable Example
+**Subject:** Artificial Intelligence with Prompt Engineering (AIPE - DI05016011) | **Unit 2: Large Language Models**
+
+---
+
+#### 1. Tokens in LLMs:
+• **Definition:** A **token** is the fundamental atomic unit of text that an LLM reads and processes. Tokens can represent individual characters, subwords, or entire words.
+• **Tokenization Mechanism (Byte-Pair Encoding - BPE):**
+  - Text is broken down into sub-word pieces to efficiently handle unseen vocabulary, prefixes, and suffixes.
+  - *Rule of Thumb:* 1,000 English tokens ≈ 750 words.
+• **Example:**
+  - String: `"Understanding Prompt Engineering"`
+  - Tokens: `["Understand", "ing", " Prompt", " Engineer", "ing"]` (5 tokens).
+
+#### 2. Embeddings in LLMs:
+• **Definition:** An **embedding** is a dense continuous numerical vector (array of floating-point numbers) in high-dimensional vector space (e.g., 768 to 4096 dimensions) that captures the semantic meaning of a token or sentence.
+• **Semantic Distance (Cosine Similarity):**
+  - Words with similar meanings have vectors located close together in vector space.
+  - $\cos(\theta) = \frac{A \cdot B}{\|A\| \|B\|}$
+• **Mathematical Vector Analogy Example:**
+  $\text{Vector}(\text{"King"}) - \text{Vector}(\text{"Man"}) + \text{Vector}(\text{"Woman"}) \approx \text{Vector}(\text{"Queen"})$
+• **Role in Prompt Engineering & RAG:** Embeddings convert documents and questions into vector vectors so database engines can perform fast semantic similarity search.''';
+
+      case 4:
+        return r'''### 📝 Question 4: Explain Working of LLMs with Suitable Diagram
+**Subject:** Artificial Intelligence with Prompt Engineering (AIPE - DI05016011) | **Unit 2: Large Language Models**
+
+---
+
+#### 1. Conceptual Architecture & Workflow Diagram:
+```
+┌────────────────────────────────────────────────────────┐
+│ 1. Raw User Prompt: "Explain photosynthesis in brief"  │
+└──────────────────────────┬─────────────────────────────┘
+                           │
+                           ▼
+┌────────────────────────────────────────────────────────┐
+│ 2. Tokenizer (BPE): ["Explain", " photo", "synthesis"] │
+└──────────────────────────┬─────────────────────────────┘
+                           │
+                           ▼
+┌────────────────────────────────────────────────────────┐
+│ 3. Input Embeddings + Positional Encoding Vector (RoPE)│
+└──────────────────────────┬─────────────────────────────┘
+                           │
+                           ▼
+┌────────────────────────────────────────────────────────┐
+│ 4. Stack of Transformer Decoder Blocks:                │
+│    • Multi-Head Self-Attention (Masked)                │
+│    • Layer Normalization & Residual Add                │
+│    • Feed-Forward Network (FFN / SwiGLU)               │
+└──────────────────────────┬─────────────────────────────┘
+                           │
+                           ▼
+┌────────────────────────────────────────────────────────┐
+│ 5. Linear Projection & Softmax Probability Layer       │
+│    P("Photosynthesis") = 0.82, P("Plants") = 0.09...   │
+└──────────────────────────┬─────────────────────────────┘
+                           │
+                           ▼
+┌────────────────────────────────────────────────────────┐
+│ 6. Next Token Generated: "Photosynthesis" (Loop back)  │
+└────────────────────────────────────────────────────────┘
+```
+
+#### 2. Step-by-Step Execution:
+1. **Tokenization & Positional Encoding:** Converts words to token IDs and injects position markers since Transformers process all tokens simultaneously.
+2. **Multi-Head Self-Attention:** Computes how much attention every word should pay to all other words in the prompt via Query ($Q$), Key ($K$), and Value ($V$) matrices:
+   $\text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V$
+3. **Feed-Forward Layers:** Non-linear transformations extract high-level conceptual relationships.
+4. **Softmax & Autoregressive Decoding:** Determines the next word, appends it to the sequence, and repeats until the End-of-Sequence (`<EOS>`) token is emitted.''';
+
+      case 5:
+        return r'''### 📝 Question 5: Write Note on Following LLMs: GPT and Llama
+**Subject:** Artificial Intelligence with Prompt Engineering (AIPE - DI05016011) | **Unit 2: Large Language Models**
+
+---
+
+#### 1. GPT (Generative Pre-trained Transformer) - OpenAI:
+• **Developer:** OpenAI (San Francisco, USA).
+• **Architecture:** Proprietary, closed-weights decoder-only transformer.
+• **Evolution:**
+  - *GPT-1 (2018):* 117M parameters, proved pretraining + fine-tuning works.
+  - *GPT-2 (2019):* 1.5B parameters, demonstrated zero-shot capabilities.
+  - *GPT-3 (2020):* 175B parameters, revolutionized in-context learning.
+  - *GPT-4 & GPT-4o (2023-2024):* Multimodal frontier model with Mixture-of-Experts (MoE).
+• **Training Paradigm:** Trained via Unsupervised Pretraining on web text + Supervised Fine-Tuning (SFT) + Reinforcement Learning from Human Feedback (RLHF).
+• **Access:** Closed-source; accessed via web interface (ChatGPT) or OpenAI REST API.
+
+#### 2. LLaMA (Large Language Model Meta AI) - Meta:
+• **Developer:** Meta AI (Mark Zuckerberg / Yann LeCun team).
+• **Architecture:** Open-weights foundation model designed for research and commercial deployment.
+• **Key Architectural Enhancements:**
+  - Uses **SwiGLU** activation functions instead of standard ReLU.
+  - Employs **Rotary Position Embeddings (RoPE)** for superior context length scaling.
+  - Implements **RMSNorm** (Root Mean Square Normalization) for stable training.
+• **Evolution:**
+  - *LLaMA-1 (2023):* 7B to 65B parameters, outperformed GPT-3 despite smaller size.
+  - *LLaMA-2 (2023):* Doubled context length, commercially licensed.
+  - *LLaMA-3 / 3.1 / 3.3 (2024):* 8B, 70B, and 405B parameters trained on 15+ trillion tokens, state-of-the-art open model competing directly with GPT-4.
+• **Access:** Open-weights; can be downloaded, fine-tuned privately on local servers, and run offline using Ollama or vLLM.''';
+
+      case 6:
+        return r'''### 📝 Question 6: Explain Capabilities and Limitations of LLMs
+**Subject:** Artificial Intelligence with Prompt Engineering (AIPE - DI05016011) | **Unit 2: Large Language Models**
+
+---
+
+#### 1. Core Capabilities of LLMs:
+1. **Natural Language Understanding & Generation:** Produces grammatically perfect, contextually relevant human-like writing across essays, reports, and emails.
+2. **Multilingual Translation:** High-accuracy translation across hundreds of languages including regional Indian languages (Hindi, Gujarati, Tamil).
+3. **Code Synthesis & Debugging:** Writes, explains, refactors, and debugs code across Python, Dart, JavaScript, C++, and SQL.
+4. **Text Summarization & Extraction:** Condenses multi-page research documents and extracts structured JSON/CSV data.
+5. **In-Context Few-Shot Learning:** Adapts to novel tasks on the fly simply by reading 2-3 examples inside the prompt without weight updates.
+
+#### 2. Inherent Limitations of LLMs:
+1. **Hallucination:** Generating false, fictitious facts or fake citations with absolute confidence.
+2. **Knowledge Cutoff:** Lack of real-time awareness beyond the date the pre-training dataset was compiled (unless augmented with RAG or web search).
+3. **Stochastic Nature (Lack of True Common-Sense Reasoning):** LLMs are probabilistic pattern matchers, not conscious logic engines; they struggle with multi-step symbolic arithmetic.
+4. **Resource & Inference Cost:** Deploying and querying large models requires expensive enterprise GPUs (Nvidia H100/A100) and substantial electricity.
+5. **Security Vulnerabilities:** Susceptible to Prompt Injection attacks, jailbreaks, and sensitive training data leakage.''';
+
+      case 7:
+        return r'''### 📝 Question 7: Explain Hallucination in LLM and Methods to Reduce It
+**Subject:** Artificial Intelligence with Prompt Engineering (AIPE - DI05016011) | **Unit 2: Large Language Models**
+
+---
+
+#### 1. What is Hallucination in LLM?
+• **Definition:** **Hallucination** occurs when a Large Language Model generates text that sounds authoritative, logical, and confident, but is factually false, ungrounded, fabricated, or contradicts verified facts.
+• **Types:**
+  - *Extrinsic Hallucination:* Output introduces information not present or supported anywhere in the input context.
+  - *Intrinsic Hallucination:* Output directly contradicts the factual source text provided in the prompt.
+• **Root Cause:** LLMs do not "know" truth; they optimize purely for the highest conditional mathematical probability of the next token based on statistical patterns.
+
+#### 2. Proven Engineering Methods to Reduce Hallucination:
+1. **Retrieval-Augmented Generation (RAG):**
+   - Retrieve verified factual documents from a local vector database and inject them into the prompt as strict reference material.
+   - Instruct the model: *"Answer strictly and ONLY from the provided context below. If not present, state 'I do not have this information'."*
+2. **Chain-of-Thought (CoT) Prompting:**
+   - Ask the model to *"Think step-by-step and write your logical deduction before reaching the final conclusion."* This forces intermediate consistency checks.
+3. **Lowering Decoding Temperature:**
+   - Set `temperature = 0.0` or `0.2`. Lower temperatures minimize creative randomness and enforce greedy, deterministic factual outputs.
+4. **Few-Shot Demonstration Grounding:**
+   - Provide explicit input-output examples demonstrating fact-checking, citations, and polite refusals for unsupported queries.
+5. **Human-in-the-Loop & Verification Pipelines:**
+   - Cross-check outputs using automated guardrail models (e.g., Llama Guard, NeMo Guardrails) before presenting answers to end users.''';
+
+      case 8:
+        return r'''### 📝 Question 8: Describe Different Types of Cost Associated with LLM
+**Subject:** Artificial Intelligence with Prompt Engineering (AIPE - DI05016011) | **Unit 2: Large Language Models**
+
+---
+
+#### 1. The Four Primary Cost Dimensions of LLMs:
+1. **Pre-Training Cost (Capital Expenditure):**
+   - *Hardware Clusters:* Thousands of high-end GPUs (e.g., 16,000+ Nvidia H100 GPUs) running continuously for 3 to 6 months.
+   - *Electricity & Cooling:* Megawatts of power consumption running into millions of dollars.
+   - *Data Acquisition & Curation:* Buying licensed corpora, cleaning, and filtering trillions of tokens.
+   - *Total Cost:* Training a frontier model (GPT-4 / LLaMA-3 405B) exceeds **\$50M – \$100M+ USD**.
+
+2. **Fine-Tuning & Alignment Cost:**
+   - *Domain Adaptation:* Training on curated enterprise domain datasets using LoRA / QLoRA techniques.
+   - *Human Annotation for RLHF:* Paying skilled human reviewers and subject-matter experts to write and rank thousands of model responses for safety and accuracy.
+
+3. **Inference & Operational Cost (API Billing / Cloud Hosting):**
+   - *Token-Based API Pricing:* Cloud providers charge per 1 Million tokens (e.g., input tokens vs output tokens).
+   - *Dedicated GPU Cloud Hosting:* Renting cloud GPU instances (AWS, Azure, RunPod) costing \$2 – \$4 per GPU-hour.
+   - *Memory Footprint:* Running 70B models requires multi-GPU nodes with 160GB+ VRAM.
+
+4. **Integration, Engineering & Maintenance Cost:**
+   - *Vector Database & RAG Infrastructure:* Pinecone, pgvector, Supabase hosting costs.
+   - *Prompt Engineering & Continuous Evaluation:* Engineering hours spent testing, optimizing prompts, evaluating drift, and building safety guardrails.''';
+
+      default:
+        return _solveGenericQuestion('Artificial Intelligence with Prompt Engineering (AIPE) - Assignment 2 (Unit-2)', qNum, lang);
+    }
   }
+
+  // =========================================================================
+  // AIPE ASSIGNMENT 1 (UNIT-1) - OFFICIAL GTU QUESTIONS (GPH HIMMATNAGAR)
+  // =========================================================================
+  static String _solveAipeUnit1Question(int qNum, String lang) {
+    switch (qNum) {
+      case 1:
+        return r'''### 📝 Question 1: Define AI and Write Its Applications
+**Subject:** Artificial Intelligence with Prompt Engineering (AIPE - DI05016011) | **Unit 1**
+
+---
+
+#### 1. Definition of Artificial Intelligence (AI):
+**Artificial Intelligence (AI)** is the branch of computer science dedicated to creating hardware and software systems capable of performing tasks that traditionally require human intelligence—such as visual perception, natural language understanding, speech recognition, decision-making, and autonomous problem-solving.
+
+#### 2. Key Applications of AI:
+1. **Healthcare & Medicine:** Early tumor detection via computer vision, automated radiology scans, drug discovery, and robot-assisted surgery.
+2. **Automotive & Autonomous Systems:** Self-driving vehicles (Tesla, Waymo) utilizing sensor fusion and real-time obstacle detection.
+3. **Finance & Banking:** Algorithmic stock trading, automated credit scoring, fraud detection, and anti-money laundering (AML).
+4. **Education & Academics:** Personalized adaptive learning platforms, automated grading, intelligent campus chatbots.
+5. **E-Commerce & Entertainment:** Recommendation algorithms (Netflix, Amazon, YouTube), automated inventory forecasting.
+6. **Cybersecurity:** Real-time threat detection, anomaly detection, and automated intrusion prevention systems.''';
+
+      case 2:
+        return r'''### 📝 Question 2: Write the Differences Between AI, ML, and DL
+**Subject:** Artificial Intelligence with Prompt Engineering (AIPE - DI05016011) | **Unit 1**
+
+---
+
+#### 1. Comparison Matrix:
+| Parameter | Artificial Intelligence (AI) | Machine Learning (ML) | Deep Learning (DL) |
+| :--- | :--- | :--- | :--- |
+| **Scope** | Broadest umbrella discipline simulating human cognition. | Subset of AI focused on learning patterns from data. | Subset of ML using deep multi-layered neural networks. |
+| **Core Method** | Rule engines, heuristics, knowledge graphs, and learning algorithms. | Statistical algorithms (Linear Regression, Decision Trees, SVM). | Artificial Neural Networks (CNN, RNN, Transformers). |
+| **Feature Extraction**| Handcrafted manually or hard-coded by programmers. | Manually engineered features selected by domain experts. | Automatically learns hierarchical features from raw data. |
+| **Data Dependency** | Works on small rules or large data systems. | Performs effectively on medium-sized structured datasets. | Requires vast amounts of labeled/unlabeled big data. |
+| **Hardware** | Standard CPUs. | Standard CPUs and multi-core systems. | Heavy reliance on high-performance GPUs / TPUs. |
+| **Example** | Chess engine, Siri, Expert Systems. | Spam email filter, house price prediction. | Facial recognition, GPT-4, autonomous driving. |''';
+
+      case 3:
+        return r'''### 📝 Question 3: Discuss Narrow AI and General AI in Detail
+**Subject:** Artificial Intelligence with Prompt Engineering (AIPE - DI05016011) | **Unit 1**
+
+---
+
+#### 1. Narrow AI (Weak AI):
+• **Definition:** AI systems designed, trained, and optimized to execute a specific, dedicated task or a bounded set of related tasks.
+• **Characteristics:** Highly proficient in their specific domain but completely incapable of transferring knowledge or operating outside their programmed boundaries.
+• **Status:** **All existing AI systems today are Narrow AI.**
+• **Examples:** AlphaGo (plays Go masterfully but cannot play chess or speak English), Apple Siri, spam filters, face recognition unlock.
+
+#### 2. General AI (Artificial General Intelligence - AGI / Strong AI):
+• **Definition:** A hypothetical level of AI that possesses generalized human cognitive abilities—capable of understanding, learning, reasoning, abstracting, and applying intelligence across any intellectual task just like a human being.
+• **Characteristics:** Autonomous transfer learning, emotional and contextual awareness, self-awareness, and multi-domain problem-solving.
+• **Status:** Currently **theoretical**; actively researched by OpenAI, Google DeepMind, and Anthropic.
+• **Key Difference:** Narrow AI excels at 1 task; General AI can learn any intellectual task a human can do.''';
+
+      case 4:
+        return r'''### 📝 Question 4: Explain the Concept of Generative AI with Suitable Examples
+**Subject:** Artificial Intelligence with Prompt Engineering (AIPE - DI05016011) | **Unit 1**
+
+---
+
+#### 1. Concept of Generative AI:
+**Generative AI (GenAI)** refers to AI models that create new, original content (text, images, audio, video, synthetic data, code) rather than merely analyzing, labeling, or classifying existing data.
+• **Working Principle:** Learns the underlying probability distribution $P(X)$ of large training corpora and generates novel samples drawn from that learned distribution.
+• **Distinction from Discriminative AI:**
+  - *Discriminative:* Computes $P(Y \mid X)$ (e.g. "Is this picture a cat or a dog?").
+  - *Generative:* Models $P(X)$ (e.g. "Draw a brand-new, realistic picture of a cat sitting on a laptop.").
+
+#### 2. Suitable Real-World Examples:
+1. **Text Generation:** ChatGPT, Claude drafting academic essays, stories, or technical reports.
+2. **Image Synthesis:** Midjourney, DALL-E 3 generating photorealistic images from textual prompts.
+3. **Code Generation:** GitHub Copilot converting natural language comments into working Python/Dart functions.
+4. **Audio & Voice Cloning:** ElevenLabs generating realistic spoken voice from written text.
+5. **Video Generation:** OpenAI Sora generating cinematic 60-second video clips from text descriptions.''';
+
+      case 5:
+        return r'''### 📝 Question 5: Discuss Different Types of Generative AI Systems
+**Subject:** Artificial Intelligence with Prompt Engineering (AIPE - DI05016011) | **Unit 1**
+
+---
+
+#### 1. Modality-Based Classification of Generative AI:
+1. **Text-to-Text Generative Systems:**
+   - Ingest natural language prompts and produce fluent textual responses, summaries, code, and explanations.
+   - *Architecture:* Decoder-only Transformers (GPT-4, LLaMA-3).
+2. **Text-to-Image Generative Systems:**
+   - Ingest descriptive prompts and generate high-resolution synthetic artwork and photorealistic graphics.
+   - *Architecture:* Latent Diffusion Models (Stable Diffusion, Midjourney, DALL-E 3).
+3. **Text-to-Audio & Speech Systems:**
+   - Convert text into emotional speech audio or generate original musical compositions.
+   - *Architecture:* Tacotron, WaveNet, Suno AI.
+4. **Text-to-Video Systems:**
+   - Generate multi-second coherent video scenes with consistent physics and motion.
+   - *Architecture:* Diffusion Transformers (Sora, Runway Gen-3).
+5. **Text-to-Code Systems:**
+   - Specialized code generation, documentation, and automated test synthesis.
+   - *Architecture:* CodeLlama, GitHub Copilot.''';
+
+      case 6:
+        return r'''### 📝 Question 6: Explain Features and Applications of Generative AI Tools: ChatGPT, Gemini, and DALL-E
+**Subject:** Artificial Intelligence with Prompt Engineering (AIPE - DI05016011) | **Unit 1**
+
+---
+
+#### 1. ChatGPT (OpenAI):
+• **Features:** Conversational fluency, multi-turn memory retention, advanced code execution sandbox, custom GPTs, file analysis.
+• **Applications:** Customer support automation, academic tutoring, software code generation, essay writing.
+
+#### 2. Gemini (Google):
+• **Features:** Natively multimodal from the ground up (understands video, audio, image, and text simultaneously in a single prompt), massive 1M+ token context window, seamless integration with Google Workspace (Docs, Gmail, Drive).
+• **Applications:** Multimodal document analysis, long video summarization, real-time voice conversations.
+
+#### 3. DALL-E (OpenAI):
+• **Features:** High prompt fidelity, text rendering inside images, iterative editing and inpainting/outpainting.
+• **Applications:** Marketing visuals, website banner creation, digital art prototyping, product design mockups.''';
+
+      case 7:
+        return r'''### 📝 Question 7: Explain the Concept of Natural Language Processing (NLP) with Examples
+**Subject:** Artificial Intelligence with Prompt Engineering (AIPE - DI05016011) | **Unit 1**
+
+---
+
+#### 1. Concept of Natural Language Processing (NLP):
+**Natural Language Processing (NLP)** is the subfield of AI and computational linguistics that enables computers to read, interpret, understand, and generate human languages in a valuable, contextual manner.
+
+#### 2. Core NLP Tasks & Examples:
+1. **Tokenization & Lemmatization:** Breaking sentences into words and reducing words to base dictionary forms (e.g., `"running"`, `"ran"` $\to$ `"run"`).
+2. **Part-of-Speech (POS) Tagging:** Identifying nouns, verbs, adjectives.
+3. **Named Entity Recognition (NER):** Extracting people, organizations, dates (e.g., *"Sundar Pichai [PERSON] leads Google [ORG] in California [LOC]"*).
+4. **Sentiment Analysis:** Classifying customer reviews as Positive, Neutral, or Negative (e.g., *"Food was amazing!"* $\to$ 95% Positive).
+5. **Machine Translation:** Translating English text into Gujarati or Hindi (e.g., Google Translate).''';
+
+      case 8:
+        return r'''### 📝 Question 8: Discuss the Role of NLP in Chatbots and Large Language Models
+**Subject:** Artificial Intelligence with Prompt Engineering (AIPE - DI05016011) | **Unit 1**
+
+---
+
+#### 1. Role in Chatbots:
+• **Intent Recognition:** NLP classifies user queries to determine the intended action (e.g., identifying whether the student wants a timetable, lab manual, or attendance report).
+• **Entity Extraction:** Pulls parameters like subject name, unit number, date, or enrollment ID from informal sentences.
+• **Dialogue State Tracking:** Keeps track of previous context across multi-turn user conversations.
+
+#### 2. Role in Large Language Models (LLMs):
+• **Input Tokenization & Embeddings:** Converts raw alphabetic characters into mathematical vectors representing semantic nuance.
+• **Self-Attention Mechanism:** Models grammatical rules, idiomatic expressions, and semantic context across thousands of words.
+• **Human Preference Alignment:** NLP benchmarks (HELM, MMLU) and techniques like RLHF evaluate safety, helpfulness, and factual coherence.''';
+
+      default:
+        return _solveGenericQuestion('Artificial Intelligence with Prompt Engineering (AIPE) - Assignment 1 (Unit-1)', qNum, lang);
+    }
+  }
+
+  // =========================================================================
+  // AIPE ASSIGNMENT 3 (UNIT-3) - OFFICIAL GTU QUESTIONS (GPH HIMMATNAGAR)
+  // =========================================================================
+  static String _solveAipeUnit3Question(int qNum, String lang) {
+    switch (qNum) {
+      case 1:
+        return r'''### 📝 Question 1: Define Prompt and Prompt Engineering
+**Subject:** Artificial Intelligence with Prompt Engineering (AIPE - DI05016011) | **Unit 3: Prompt Engineering Fundamentals**
+
+---
+
+#### 1. Definition of Prompt:
+A **Prompt** is the specific text, instruction, question, code snippet, or contextual input provided by a user to a Generative AI model or Large Language Model (LLM) to elicit a desired output or response.
+
+#### 2. Definition of Prompt Engineering:
+**Prompt Engineering** is the strategic discipline, process, and art of designing, refining, structuring, and optimizing input prompts to guide an LLM toward producing accurate, relevant, safe, and high-quality responses with minimal hallucination.
+• *Significance:* Enables developers and users to harness the full reasoning and generative capabilities of LLMs without changing underlying model weights.''';
+
+      case 2:
+        return r'''### 📝 Question 2: Explain Prompt Lifecycle with Suitable Diagram
+**Subject:** Artificial Intelligence with Prompt Engineering (AIPE - DI05016011) | **Unit 3: Prompt Engineering Fundamentals**
+
+---
+
+#### 1. Prompt Lifecycle Diagram:
+```
+┌────────────────────────────────────────────────────────┐
+│ 1. Define Goal & Requirements (Task, Persona, Tone)    │
+└──────────────────────────┬─────────────────────────────┘
+                           │
+                           ▼
+┌────────────────────────────────────────────────────────┐
+│ 2. Design Initial Prompt (Instructions, Context, Data) │
+└──────────────────────────┬─────────────────────────────┘
+                           │
+                           ▼
+┌────────────────────────────────────────────────────────┐
+│ 3. Execute & Test with LLM                             │
+└──────────────────────────┬─────────────────────────────┘
+                           │
+                           ▼
+┌────────────────────────────────────────────────────────┐
+│ 4. Evaluate Output (Accuracy, Hallucination, Format)   │
+└──────────────────────────┬─────────────────────────────┘
+                           │
+              ┌────────────┴────────────┐
+              ▼                         ▼
+      [Does not meet SLA]       [Meets Goal]
+              │                         │
+              ▼                         ▼
+┌──────────────────────────┐  ┌──────────────────────────┐
+│ 5. Refine & Iterate      │  │ 6. Deploy & Monitor      │
+│ (Add constraints, shots) │  │ (Logging, Guardrails)    │
+└─────────────┬────────────┘  └──────────────────────────┘
+              │                         ▲
+              └─────────────────────────┘
+```
+
+#### 2. Stages Explained:
+1. **Define Goal:** Establish output format (JSON, Markdown, bullet points), target audience, and required facts.
+2. **Drafting Initial Prompt:** Combine role definition, primary directive, and input variables.
+3. **Execution & Testing:** Run prompt against various model parameters (temperature, top_p).
+4. **Evaluation:** Check for logical errors, factual accuracy, and format adherence.
+5. **Iterative Refinement:** Add negative constraints, few-shot examples, or Chain-of-Thought directives.
+6. **Deployment & Continuous Monitoring:** Integrate into application code and monitor for drift.''';
+
+      case 3:
+        return r'''### 📝 Question 3: Describe the Structure of the Prompt
+**Subject:** Artificial Intelligence with Prompt Engineering (AIPE - DI05016011) | **Unit 3: Prompt Engineering Fundamentals**
+
+---
+
+#### 1. Key Structural Components of an Effective Prompt:
+1. **Persona / Role:** Assigns expertise to the model (e.g., *"You are a senior GTU IT professor and academic advisor."*).
+2. **Instruction / Task:** Clear, imperative verb stating exactly what the AI must do (e.g., *"Explain the working of transformers."*).
+3. **Context / Background:** Relevant reference documents, constraints, or historical context (e.g., *"For final-year diploma engineering students preparing for semester exams."*).
+4. **Input Data:** The specific content to process (e.g., raw code, article excerpt, student question).
+5. **Output Format / Constraints:** Exact desired output schema (e.g., *"Format as clean Markdown with numbered headings, comparison table, and bullet points. Do not exceed 300 words."*).''';
+
+      case 4:
+        return r'''### 📝 Question 4: Explain Prompting Methods and Their Advantages with Suitable Example Prompts
+**Subject:** Artificial Intelligence with Prompt Engineering (AIPE - DI05016011) | **Unit 3: Prompt Engineering Fundamentals**
+
+---
+
+#### 1. Zero-Shot Prompting:
+• **Concept:** The model is given an instruction without any examples and asked to solve the task directly using pre-trained knowledge.
+• **Example Prompt:** *"Classify the sentiment of this review: 'The battery drains in 2 hours.' Output: [Positive / Negative]"*
+• **Advantage:** Fast, token-efficient, simple.
+
+#### 2. Few-Shot Prompting:
+• **Concept:** Provides 2 to 5 demonstration input-output pairs to show the model the desired pattern and format before the target question.
+• **Example Prompt:**
+  ```
+  Review: "Camera quality is breathtaking!" -> Sentiment: Positive
+  Review: "Delivery took 3 weeks." -> Sentiment: Negative
+  Review: "Screen resolution is crystal clear." -> Sentiment:
+  ```
+• **Advantage:** Drastically improves output consistency and format adherence.
+
+#### 3. Role-Based Prompting:
+• **Concept:** Assigns a specialized persona or identity to frame the perspective, vocabulary, and depth of the response.
+• **Example Prompt:** *"Act as a cybersecurity expert and explain SQL Injection to a first-year programming student."*
+• **Advantage:** Sets appropriate tone, depth, and terminology tailored to the audience.''';
+
+      case 5:
+        return r'''### 📝 Question 5: Write the Process of Writing Effective Prompts and Its Advantages
+**Subject:** Artificial Intelligence with Prompt Engineering (AIPE - DI05016011) | **Unit 3: Prompt Engineering Fundamentals**
+
+---
+
+#### 1. Systematic Process for Crafting Effective Prompts:
+1. **Be Specific and Clear:** Avoid vague queries; use direct verbs (*Explain*, *Compare*, *List*, *Summarize*).
+2. **Provide Context:** Frame the target user level, domain, and objective.
+3. **Specify Constraints & Format:** Explicitly define output format (JSON, Markdown table, bulleted list).
+4. **Use Delimiters:** Enclose reference text within triple quotes (`"""`) or markdown blocks to prevent prompt confusion.
+5. **Direct Negative Constraints:** State what NOT to do (e.g., *"Do not include personal opinions or introductory filler text."*).
+
+#### 2. Advantages:
+• Drastically reduces model hallucinations.
+• Ensures predictable, parseable responses for software integrations.
+• Saves API token cost by avoiding lengthy conversational follow-ups.''';
+
+      case 6:
+        return r'''### 📝 Question 6: Write a Note on Prompt Testing and Evaluation
+**Subject:** Artificial Intelligence with Prompt Engineering (AIPE - DI05016011) | **Unit 3: Prompt Engineering Fundamentals**
+
+---
+
+#### 1. Prompt Testing:
+• Involves testing prompt behavior across diverse test cases (typical cases, edge cases, adversarial prompt injection attempts).
+• Evaluates model outputs across different temperature settings (0.0 for deterministic vs 0.7 for creative).
+
+#### 2. Evaluation Metrics:
+1. **Accuracy & Factuality:** Verification against ground-truth benchmarks.
+2. **Format Adherence:** Programmatic JSON schema validation.
+3. **Latency & Token Usage:** Measuring inference speed and cost.
+4. **Safety & Toxicity:** Checking compliance with safety guardrails.''';
+
+      default:
+        return _solveGenericQuestion('Artificial Intelligence with Prompt Engineering (AIPE) - Assignment 3 (Unit-3)', qNum, lang);
+    }
+  }
+
+  // =========================================================================
+  // AIPE ASSIGNMENT 4 (UNIT-4) - OFFICIAL GTU QUESTIONS (GPH HIMMATNAGAR)
+  // =========================================================================
+  static String _solveAipeUnit4Question(int qNum, String lang) {
+    switch (qNum) {
+      case 1:
+        return r'''### 📝 Question 1: Describe Following Prompting Techniques with Suitable Examples
+**Subject:** Artificial Intelligence with Prompt Engineering (AIPE - DI05016011) | **Unit 4: Advanced Prompting & RAG**
+
+---
+
+#### 1. Chain-of-Thought (CoT) Prompting:
+• **Concept:** Prompts the LLM to generate intermediate reasoning steps before arriving at the final answer.
+• **Example:** *"A farmer has 15 sheep. All but 8 die. How many are left? Think step-by-step before answering."*
+
+#### 2. Prompt Chaining:
+• **Concept:** Breaking a complex task into multiple sequential prompts where the output of Prompt 1 becomes the input for Prompt 2.
+• **Example:** Prompt 1: Summarize customer feedback -> Prompt 2: Extract top 3 feature requests from the summary -> Prompt 3: Draft GitHub issues for each request.
+
+#### 3. Self-Consistency Prompting:
+• **Concept:** Samples multiple diverse reasoning paths from the model at temperature > 0 and selects the majority answer.
+• **Advantage:** Boosts accuracy on complex mathematical and symbolic reasoning problems.
+
+#### 4. ReAct (Reason + Act) Prompting:
+• **Concept:** Combines reasoning traces with task-specific actions (searching databases, calling APIs, executing calculators) in an interactive feedback loop.''';
+
+      case 2:
+        return r'''### 📝 Question 2: Prompt Design for Summarization, Code Generation, Q&A, and Translation
+**Subject:** Artificial Intelligence with Prompt Engineering (AIPE - DI05016011) | **Unit 4: Advanced Prompting & RAG**
+
+---
+
+#### 1. Text Summarization:
+• *Design:* Define maximum length, target audience, and key takeaway bullets.
+• *Prompt Example:* *"Summarize the following research paper into 3 executive bullet points under 100 words: """[Insert Text]""""*
+
+#### 2. Code Generation:
+• *Design:* Specify programming language, framework version, edge-case handling, and documentation comments.
+• *Prompt Example:* *"Write a Flutter Dart function using Riverpod that performs async login with error handling. Include doc comments."*
+
+#### 3. Question Answering (Q&A):
+• *Design:* Ground answer strictly in provided context to eliminate hallucination.
+• *Prompt Example:* *"Answer the question strictly from the provided campus notice below. If unknown, state 'Information not found.'"""[Notice]""""*
+
+#### 4. Language Translation:
+• *Design:* Preserve cultural idioms and technical terminology accurately.
+• *Prompt Example:* *"Translate the following college circular from English to formal Gujarati, keeping technical terms in English brackets."*''';
+
+      case 3:
+        return r'''### 📝 Question 3: Concept and Basic Architecture of Retrieval Augmented Generation (RAG) with Diagram
+**Subject:** Artificial Intelligence with Prompt Engineering (AIPE - DI05016011) | **Unit 4: Advanced Prompting & RAG**
+
+---
+
+#### 1. Concept of RAG:
+**Retrieval-Augmented Generation (RAG)** is an AI framework that augments an LLM's prompt with authoritative facts retrieved dynamically from external knowledge bases (PDFs, relational databases, vector stores) before generating an answer.
+
+#### 2. Architecture Diagram:
+```
+┌────────────────────────────────────────────────────────┐
+│ 1. User Query: "When is the AIPE Mid-Sem Exam?"        │
+└──────────────────────────┬─────────────────────────────┘
+                           │
+                           ▼
+┌────────────────────────────────────────────────────────┐
+│ 2. Embed Query (Vector Embedding Model)                │
+└──────────────────────────┬─────────────────────────────┘
+                           │
+                           ▼
+┌────────────────────────────────────────────────────────┐
+│ 3. Semantic Vector Search in Database (Supabase / RAG) │
+│    Matched Chunk: "AIPE Exam: 28-09-2026 11:30 AM"     │
+└──────────────────────────┬─────────────────────────────┘
+                           │
+                           ▼
+┌────────────────────────────────────────────────────────┐
+│ 4. Augmented Prompt Injected into LLM:                 │
+│    "Context: [AIPE Exam 28-09-2026] Question: [...]"   │
+└──────────────────────────┬─────────────────────────────┘
+                           │
+                           ▼
+┌────────────────────────────────────────────────────────┐
+│ 5. Accurate, Zero-Hallucination Verified Response      │
+└────────────────────────────────────────────────────────┘
+```''';
+
+      case 4:
+        return r'''### 📝 Question 4: Explain Use of External Knowledge Sources in RAG
+**Subject:** Artificial Intelligence with Prompt Engineering (AIPE - DI05016011) | **Unit 4: Advanced Prompting & RAG**
+
+---
+
+#### 1. Why External Knowledge Sources are Essential:
+1. **Eliminates Hallucination:** Forces the LLM to ground its assertions in verified corporate or academic records.
+2. **Overcomes Knowledge Cutoff:** Provides live, updated data (e.g. current semester timetables, circulars) without costly model retraining.
+3. **Data Security & Privacy:** Proprietary campus documents remain secured inside local databases rather than being baked into public LLM training weights.
+4. **Source Attribution:** Allows the system to cite specific document pages and attach downloadable PDF files for verification.''';
+
+      default:
+        return _solveGenericQuestion('Artificial Intelligence with Prompt Engineering (AIPE) - Assignment 4 (Unit-4)', qNum, lang);
+    }
+  }
+
+  // =========================================================================
+  // CDCT ASSIGNMENTS (UNITS 2, 3, 4) - OFFICIAL GTU QUESTIONS (GPH HIMMATNAGAR)
+  // =========================================================================
+  static String _solveCdctUnit2Question(int qNum, String lang) {
+    switch (qNum) {
+      case 1:
+        return r'''### 📝 Question 1: Define Virtualization, Characteristics, and Advantages
+**Subject:** Cloud and Data Center Technology (CDCT - DI05016031) | **Unit 2: Virtualization and Hypervisors**
+
+---
+
+#### 1. Definition of Virtualization:
+**Virtualization** is the fundamental cloud technology that abstracts physical hardware resources (CPU, Memory, Storage, Network) to create multiple simulated virtual environments or dedicated Virtual Machines (VMs) on a single physical host machine.
+
+#### 2. Key Characteristics:
+• **Partitioning:** Running multiple operating systems on one physical machine simultaneously.
+• **Isolation:** Fault and security isolation; a failure in one VM does not crash neighboring VMs.
+• **Encapsulation:** Complete VM state is saved as a single file, making migration effortless.
+• **Hardware Independence:** VMs can run on any physical host without driver incompatibilities.
+
+#### 3. Advantages:
+• Maximizes hardware server utilization (from 15% to 80%+).
+• Reduces hardware, data center floor space, and cooling power costs.
+• Rapid provisioning of new servers in minutes instead of weeks.''';
+
+      case 5:
+        return r'''### 📝 Question 5: Explain Hypervisor with Its Types
+**Subject:** Cloud and Data Center Technology (CDCT - DI05016031) | **Unit 2: Virtualization and Hypervisors**
+
+---
+
+#### 1. What is a Hypervisor?
+A **Hypervisor** (or Virtual Machine Monitor - VMM) is specialized software, firmware, or low-level operating code that creates, manages, and executes virtual machines by allocating underlying hardware resources.
+
+#### 2. Types of Hypervisors:
+1. **Type-1 Hypervisor (Bare-Metal / Native):**
+   - Runs directly on the host computer's physical hardware without an underlying operating system.
+   - *Characteristics:* High performance, enterprise-grade, low latency, robust security.
+   - *Examples:* VMware ESXi, Microsoft Hyper-V, Citrix XenServer, KVM.
+2. **Type-2 Hypervisor (Hosted):**
+   - Runs on top of a conventional host operating system as an application software.
+   - *Characteristics:* Slower performance due to OS overhead; used primarily for desktop testing and development.
+   - *Examples:* Oracle VirtualBox, VMware Workstation.''';
+
+      default:
+        return '''### 📝 Question $qNum: Virtualization & Hypervisors (CDCT Unit 2)
+• **Full Virtualization:** Complete hardware simulation allowing unmodified guest operating systems.
+• **Para-Virtualization:** Guest OS is modified to communicate directly with the hypervisor via hypercalls for superior performance.
+• **OS-Level Virtualization:** Containers (Docker) sharing host OS kernel for lightweight execution.''';
+    }
+  }
+
+  static String _solveCdctUnit3Question(int qNum, String lang) {
+    return '''### 📝 Question $qNum: Data Center Architecture (CDCT Unit 3)
+• **Data Center:** A centralized physical facility housing compute servers, storage systems, and network infrastructure supporting enterprise applications.
+• **Topologies:** Three-Tier architecture (Core, Aggregation, Access) and modern Spine-and-Leaf architecture for low-latency East-West cloud traffic.
+• **Cloud Scalability vs Elasticity:**
+  - *Scalability:* System's ability to handle growing workloads by adding resources (Scale-up or Scale-out).
+  - *Elasticity:* Ability to automatically expand and shrink resources dynamically based on real-time load.''';
+  }
+
+  static String _solveCdctUnit4Question(int qNum, String lang) {
+    return '''### 📝 Question $qNum: Cloud Storage & Database Services (CDCT Unit 4)
+• **Cloud Storage Types:**
+  - *Block Storage:* Fast raw volumes for OS and databases (e.g., AWS EBS).
+  - *File Storage:* Shared hierarchical file systems via NFS/SMB (e.g., AWS EFS).
+  - *Object Storage:* Highly durable unstructured storage accessible via HTTP REST API (e.g., AWS S3, Supabase Storage).
+• **Consistency vs Durability:**
+  - *Consistency:* Ensures all read operations return the most recent write.
+  - *Durability:* Ensures committed data is permanently preserved without corruption (99.999999999% durability).''';
+  }
+
 
   static String _solveDbmsQuestion(int qNum, String lang) {
     return '''### 📝 Question $qNum: Database Management Systems (DBMS)
