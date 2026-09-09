@@ -171,8 +171,9 @@ class SupabaseService {
 
             final stopWords = const {
               'give', 'me', 'please', 'show', 'tell', 'send', 'share', 'can', 'you',
-              'i', 'need', 'want', 'where', 'is', 'the', 'what', 'a', 'an', 'of',
+              'i', 'need', 'want', 'where', 'is', 'the', 'what', 'whats', "what's", 'a', 'an', 'of',
               'for', 'about', 'with', 'pdf', 'file', 'document', 'download', 'view', 'get',
+              'my', 'our', 'when', 'whens', "when's", 'how', 'which', 'are', 'was', 'were',
               'krupya', 'aapo', 'moklo', 'batavo', 'de', 'do', 'aap',
               'que', 'question', 'qu', 'q', 'ans', 'answer', 'solve', 'solution',
               'prashna', 'javab', 'qu1', 'qu2', 'qu3', 'qu4', 'qu5', 'qu6', 'qu7',

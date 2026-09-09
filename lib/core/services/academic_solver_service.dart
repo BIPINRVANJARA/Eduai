@@ -1231,4 +1231,99 @@ For **$subject**, Question $qNum addresses core theoretical foundations and anal
 • **Key Principles:** Structured implementation steps, formulas, and diagrams.
 • **Exam Tips:** Focus on standard definitions and clean bullet points for full marks.''';
   }
+
+  // -------------------------------------------------------------------------
+  // OFFICIAL GTU MID-SEMESTER EXAMINATION SCHEDULE SOLVER
+  // -------------------------------------------------------------------------
+  static String getExamScheduleResponse({
+    required String userText,
+    required String language,
+    String? specificSubject,
+  }) {
+    final bool isGujarati = language == 'GUJARATI';
+    final lower = userText.toLowerCase();
+
+    String? sub = specificSubject;
+    if (sub == null) {
+      if (lower.contains('aipd') || lower.contains('product design') || lower.contains('product development') || lower.contains('ai product')) {
+        sub = 'aipd';
+      } else if (lower.contains('aipe') || lower.contains('prompt engineering') || lower.contains('prompt')) {
+        sub = 'aipe';
+      } else if (lower.contains('cdct') || lower.contains('cloud') || lower.contains('data center') || lower.contains('cyber') || lower.contains('security')) {
+        sub = 'cdct';
+      } else if (lower.contains('fbc') || lower.contains('blockchain') || lower.contains('foundation of blockchain')) {
+        sub = 'fbc';
+      }
+    }
+
+    final buffer = StringBuffer();
+
+    if (sub != null) {
+      if (isGujarati) {
+        switch (sub) {
+          case 'aipd':
+            buffer.writeln('🎯 **AI Product Design (AIPD - DI05016021)** પરીક્ષા:\n• 📅 **તારીખ:** **મંગળવાર, 29-09-2026**\n• ⏰ **સમય:** **સવારે 11:30 થી બપોરે 12:30**\n• 🏫 **વિભાગ:** ઇન્ફોર્મેશન ટેકનોલોજી (સેમેસ્ટર 5)\n');
+            break;
+          case 'aipe':
+            buffer.writeln('🎯 **Artificial Intelligence with Prompt Engineering (AIPE - DI05016011)** પરીક્ષા:\n• 📅 **તારીખ:** **સોમવાર, 28-09-2026**\n• ⏰ **સમય:** **સવારે 11:30 થી બપોરે 12:30**\n• 🏫 **વિભાગ:** ઇન્ફોર્મેશન ટેકનોલોજી (સેમેસ્ટર 5)\n');
+            break;
+          case 'cdct':
+            buffer.writeln('🎯 **Cloud and Data Center Technology (CDCT - DI05016031)** પરીક્ષા:\n• 📅 **તારીખ:** **બુધવાર, 30-09-2026**\n• ⏰ **સમય:** **સવારે 11:30 થી બપોરે 12:30**\n• 🏫 **વિભાગ:** ઇન્ફોર્મેશન ટેકનોલોજી (સેમેસ્ટર 5)\n');
+            break;
+          case 'fbc':
+            buffer.writeln('🎯 **Foundation of Blockchain (FBC - DI05016051)** પરીક્ષા:\n• 📅 **તારીખ:** **ગુરુવાર, 01-10-2026**\n• ⏰ **સમય:** **સવારે 11:30 થી બપોરે 12:30**\n• 🏫 **વિભાગ:** ઇન્ફોર્મેશન ટેકનોલોજી (સેમેસ્ટર 5)\n');
+            break;
+        }
+      } else {
+        switch (sub) {
+          case 'aipd':
+            buffer.writeln('🎯 **AI Product Design (AIPD - DI05016021)** Mid-Sem Exam:\n• 📅 **Date:** **Tuesday, 29-09-2026**\n• ⏰ **Timing:** **11:30 AM – 12:30 PM**\n• 🏫 **Department:** Information Technology (Sem 5)\n');
+            break;
+          case 'aipe':
+            buffer.writeln('🎯 **Artificial Intelligence with Prompt Engineering (AIPE - DI05016011)** Mid-Sem Exam:\n• 📅 **Date:** **Monday, 28-09-2026**\n• ⏰ **Timing:** **11:30 AM – 12:30 PM**\n• 🏫 **Department:** Information Technology (Sem 5)\n');
+            break;
+          case 'cdct':
+            buffer.writeln('🎯 **Cloud and Data Center Technology (CDCT - DI05016031)** Mid-Sem Exam:\n• 📅 **Date:** **Wednesday, 30-09-2026**\n• ⏰ **Timing:** **11:30 AM – 12:30 PM**\n• 🏫 **Department:** Information Technology (Sem 5)\n');
+            break;
+          case 'fbc':
+            buffer.writeln('🎯 **Foundation of Blockchain (FBC - DI05016051)** Mid-Sem Exam:\n• 📅 **Date:** **Thursday, 01-10-2026**\n• ⏰ **Timing:** **11:30 AM – 12:30 PM**\n• 🏫 **Department:** Information Technology (Sem 5)\n');
+            break;
+        }
+      }
+    }
+
+    if (isGujarati) {
+      buffer.writeln('📅 **ઇન્ફોર્મેશન ટેકનોલોજી (IT) — સેમેસ્ટર 5 મિડ-સેમ પરીક્ષા ટાઈમટેબલ / સમયપત્રક (Winter 2026)**\n');
+      buffer.writeln('⏰ **પરીક્ષા સમય: સવારે 11:30 થી બપોરે 12:30**');
+      buffer.writeln('🏫 **કોલેજ:** ગવર્નમેન્ટ પોલિટેકનિક, હિંમતનગર\n');
+      buffer.writeln('| તારીખ | વાર | વિષય | વિષય કોડ | સમય |');
+      buffer.writeln('| :--- | :--- | :--- | :--- | :--- |');
+      buffer.writeln('| **28-09-2026** | સોમવાર | Artificial Intelligence with Prompt Engineering (AIPE) | DI05016011 | 11:30 AM – 12:30 PM |');
+      buffer.writeln('| **29-09-2026** | મંગળવાર | AI Product Design (AIPD) | DI05016021 | 11:30 AM – 12:30 PM |');
+      buffer.writeln('| **30-09-2026** | બુધવાર | Cloud and Data Center Technology (CDCT) | DI05016031 | 11:30 AM – 12:30 PM |');
+      buffer.writeln('| **01-10-2026** | ગુરુવાર | Foundation of Blockchain (FBC) | DI05016051 | 11:30 AM – 12:30 PM |');
+      buffer.writeln('| **03-10-2026** | શનિવાર | **પરીક્ષા નથી (No Exam)** | — | — |\n');
+      buffer.writeln('📌 **પરીક્ષા નિયમો & સૂચનાઓ:**');
+      buffer.writeln('1. પરીક્ષા શરૂ થવાના **15 મિનિટ પહેલાં** (11:15 AM સુધીમાં) પરીક્ષા ખંડમાં પહોંચવું.');
+      buffer.writeln('2. હોલ ટિકિટ (Hall Ticket) અને કોલેજ આઈ-કાર્ડ સાથે રાખવું ફરજિયાત છે.');
+      buffer.writeln('3. પરીક્ષા ખંડમાં મોબાઈલ ફોન કે સ્માર્ટવોચ લઈ જવાની સખત મનાઈ છે.');
+    } else {
+      buffer.writeln('📅 **IT (Information Technology) — Semester 5 Mid-Sem Examination Schedule (Winter 2026)**\n');
+      buffer.writeln('⏰ **Exam Timing: 11:30 AM – 12:30 PM**');
+      buffer.writeln('🏫 **College:** Government Polytechnic Himmatnagar (GPH)\n');
+      buffer.writeln('| Date | Day | Subject | Subject Code | Timing |');
+      buffer.writeln('| :--- | :--- | :--- | :--- | :--- |');
+      buffer.writeln('| **28-09-2026** | Monday | Artificial Intelligence with Prompt Engineering (AIPE) | DI05016011 | 11:30 AM – 12:30 PM |');
+      buffer.writeln('| **29-09-2026** | Tuesday | AI Product Design (AIPD) | DI05016021 | 11:30 AM – 12:30 PM |');
+      buffer.writeln('| **30-09-2026** | Wednesday | Cloud and Data Center Technology (CDCT) | DI05016031 | 11:30 AM – 12:30 PM |');
+      buffer.writeln('| **01-10-2026** | Thursday | Foundation of Blockchain (FBC) | DI05016051 | 11:30 AM – 12:30 PM |');
+      buffer.writeln('| **03-10-2026** | Saturday | **No Exam** | — | — |\n');
+      buffer.writeln('📌 **Official Examination Instructions:**');
+      buffer.writeln('1. Students must reach the examination hall at least **15 minutes before** (by 11:15 AM).');
+      buffer.writeln('2. Bring your official **Hall Ticket** and **College ID Card**.');
+      buffer.writeln('3. Mobile phones, smartwatches, and programmable calculators are strictly prohibited in the examination hall.');
+    }
+
+    return buffer.toString().trim();
+  }
 }

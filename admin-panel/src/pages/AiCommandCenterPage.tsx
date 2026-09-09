@@ -38,6 +38,22 @@ export interface BatchDocumentItem {
 }
 
 function parsePastedSyllabusTable(rawText: string): BatchDocumentItem[] | null {
+  const lower = rawText.toLowerCase()
+  // Guard: NEVER treat exam timetables or schedules as syllabus documents!
+  if (
+    lower.includes('exam schedule') ||
+    lower.includes('exam timetable') ||
+    lower.includes('exam time table') ||
+    lower.includes('mid-sem') ||
+    lower.includes('mid sem') ||
+    lower.includes('midsem') ||
+    lower.includes('examination') ||
+    lower.includes('exam time') ||
+    (lower.includes('date') && lower.includes('day') && (lower.includes('subject') || lower.includes('code')))
+  ) {
+    return null
+  }
+
   const lines = rawText.split('\n').map(l => l.trim()).filter(l => l.length > 0)
   const results: BatchDocumentItem[] = []
 
@@ -169,8 +185,8 @@ function parsePastedSyllabusTable(rawText: string): BatchDocumentItem[] | null {
     }
   }
 
-  // METHOD 2: Single-line row parser (Fallback)
-  if (results.length === 0) {
+  // METHOD 2: Single-line row parser (Fallback only if explicitly syllabus text)
+  if (results.length === 0 && (lower.includes('syllabus') || lower.includes('curriculum'))) {
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i]
       if (line.startsWith('#') || line.toLowerCase().includes('subjectcode') || line.toLowerCase().includes('download')) {
@@ -679,6 +695,25 @@ export default function AiCommandCenterPage() {
           .single()
 
         if (insertErr) throw insertErr
+
+        // Automatically index document content into document_chunks for RAG search
+        const chunkText = docData.content_summary || msg.text || docData.title
+        if (chunkText) {
+          try {
+            await supabase.from('document_chunks').insert({
+              document_id: insertRes.id,
+              institution_id: currentInstId,
+              department: docData.department || 'Information Technology',
+              semester: docData.semester || '5',
+              subject_name: docData.subject_name || docData.title,
+              chunk_index: 0,
+              chunk_content: `DOCUMENT: ${docData.title}\nSUBJECT: ${docData.subject_name || docData.title} | SEMESTER ${docData.semester} ${docData.department}\nCATEGORY: ${(docData.category || 'DOCUMENT').toUpperCase()}\n\n${chunkText}`,
+              token_count: 250,
+            })
+          } catch (e) {
+            console.error('Failed to index document chunk:', e)
+          }
+        }
 
         setMessages(prev =>
           prev.map(m =>

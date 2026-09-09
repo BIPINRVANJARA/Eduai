@@ -7,9 +7,12 @@ import '../models/student_model.dart';
 class ChatRepository {
   static final Set<String> _conversationalWords = {
     'give', 'me', 'please', 'show', 'tell', 'send', 'share', 'can', 'you',
-    'i', 'need', 'want', 'where', 'is', 'the', 'what', 'a', 'an', 'of',
+    'i', 'need', 'want', 'where', 'is', 'the', 'what', 'whats', "what's", 'a', 'an', 'of',
     'for', 'about', 'with', 'pdf', 'file', 'document', 'download', 'view', 'get',
-    'krupya', 'aapo', 'moklo', 'batavo', 'de', 'do', 'aap'
+    'my', 'our', 'when', 'whens', "when's", 'how', 'which', 'are', 'was', 'were',
+    'will', 'be', 'on', 'at', 'to', 'in', 'has', 'have', 'do', 'does', 'did',
+    'krupya', 'aapo', 'moklo', 'batavo', 'de', 'aap', 'maru', 'maro', 'mari',
+    'kyare', 'che', 'kaho', 'janavo'
   };
 
   static bool _isValidUuid(String? str) {
@@ -90,10 +93,30 @@ class ChatRepository {
       questionNum = int.tryParse(qMatch.group(1)!);
     }
 
+    // 4. Detect Exam Schedule / Timetable Intent
+    final bool isExam = lower.contains('exam') ||
+        lower.contains('mid sem') ||
+        lower.contains('mid-sem') ||
+        lower.contains('midsem') ||
+        lower.contains('પરીક્ષા') ||
+        (lower.contains('schedule') && !lower.contains('class')) ||
+        (lower.contains('time table') && lower.contains('exam')) ||
+        (lower.contains('timetable') && lower.contains('exam'));
+
+    final bool isTT = isExam ||
+        lower.contains('timetable') ||
+        lower.contains('time table') ||
+        lower.contains('schedule') ||
+        lower.contains('સમયપત્રક') ||
+        lower.contains('ટાઈમટેબલ') ||
+        lower.contains('tt');
+
     return {
       'subject': subject,
       'assignmentNumber': assignmentNum,
       'questionNumber': questionNum,
+      'isExamSchedule': isExam,
+      'isTimetable': isTT,
     };
   }
 
@@ -280,8 +303,107 @@ class ChatRepository {
     final academicIntent = _parseAcademicIntent(userText);
     final String? intentSubject = academicIntent['subject'] as String?;
     final int? intentAssignNum = academicIntent['assignmentNumber'] as int?;
+    final bool isExamSchedule = academicIntent['isExamSchedule'] == true;
 
-    // A. Priority RAG Document Attachment (When user asks for a document / timetable / assignment)
+    // A. Priority Exam Schedule & Timetable Resolver (Direct zero-hallucination table + PDF card)
+    final bool isExplicitClassTT = lower.contains('class timetable') ||
+        lower.contains('class time table') ||
+        lower.contains('class schedule') ||
+        lower.contains('lecture timetable') ||
+        lower.contains('lecture schedule') ||
+        lower.contains('weekly timetable') ||
+        lower.contains('regular timetable');
+
+    final bool isExamScheduleQuery = !isExplicitClassTT && (
+        isExamSchedule ||
+        lower.contains('exam schedule') ||
+        lower.contains('exam timetable') ||
+        lower.contains('exam time table') ||
+        lower.contains('exam date') ||
+        lower.contains('exam time') ||
+        lower.contains('exam timing') ||
+        lower.contains('mid sem') ||
+        lower.contains('mid-sem') ||
+        lower.contains('midsem') ||
+        lower.contains('પરીક્ષા') ||
+        (lower.contains('exam') && (
+          lower.contains('schedule') ||
+          lower.contains('when') ||
+          lower.contains('date') ||
+          lower.contains('time') ||
+          lower.contains('timetable') ||
+          lower.contains('timing') ||
+          lower.contains('day') ||
+          lower.contains('table')
+        )) ||
+        (lower.contains('schedule') && (
+          lower.contains('my') ||
+          lower.contains('our') ||
+          lower.contains('it') ||
+          lower.contains('sem 5') ||
+          lower.contains('sem-5') ||
+          lower.contains('semester 5')
+        ))
+    );
+
+    if (isExamScheduleQuery) {
+      final String lang = isGujarati ? 'GUJARATI' : 'ENGLISH';
+      final examText = AcademicSolverService.getExamScheduleResponse(
+        userText: userText,
+        language: lang,
+        specificSubject: intentSubject,
+      );
+
+      // Fetch the official exam timetable document for the attachment card
+      Map<String, dynamic>? examDoc;
+      if (SupabaseService.client != null) {
+        try {
+          final byId = await SupabaseService.client!
+              .from('documents')
+              .select('*')
+              .eq('id', '62d20e77-39e2-4dcc-b188-33141b4c9b80')
+              .maybeSingle();
+
+          if (byId != null) {
+            examDoc = Map<String, dynamic>.from(byId);
+          } else {
+            final byQuery = await SupabaseService.client!
+                .from('documents')
+                .select('*')
+                .ilike('category', '%timetable%')
+                .ilike('title', '%exam%')
+                .maybeSingle();
+            if (byQuery != null) {
+              examDoc = Map<String, dynamic>.from(byQuery);
+            }
+          }
+        } catch (_) {}
+      }
+
+      final String fileUrl = examDoc?['file_url'] ??
+          'https://ifframkwyjegmxubscnk.supabase.co/storage/v1/object/public/documents/sem5/id-Exam%20Sem%20-5%20Winter%202026%20Exam%20Time%20Table%20.pdf';
+      final String docTitle = examDoc?['title'] ?? 'IT Sem 5 Mid-Sem Exam Schedule (Winter 2026)';
+      final String dept = examDoc?['department'] ?? 'Information Technology';
+      final String sem = examDoc?['semester'] ?? '5';
+
+      return ChatMessageModel(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        sender: ChatSender.ai,
+        text: examText,
+        timestamp: DateTime.now(),
+        dataType: ChatDataType.timetable,
+        payload: {
+          'fileUrl': fileUrl,
+          'title': docTitle,
+          'category': 'TIMETABLE',
+          'subject': 'IT Semester 5 Exam Schedule',
+          'department': dept,
+          'semester': sem,
+        },
+      );
+    }
+
+    // B. Priority RAG Document Attachment (When user asks for a document / timetable / assignment)
     if (!isStudentDataQuery && isDocFetchIntent && !isQuestionAnsweringRequest && SupabaseService.client != null) {
       try {
         Map<String, dynamic>? targetDoc;
@@ -398,6 +520,11 @@ class ChatRepository {
             } else {
               label = 'Here is the **$title** ($categoryDisplay) you requested:';
             }
+          }
+
+          final docDesc = (targetDoc['description'] ?? targetDoc['content_summary'] ?? '').toString().trim();
+          if (docDesc.isNotEmpty && !docDesc.startsWith('This document contains the class')) {
+            label += '\n\n$docDesc';
           }
 
           return ChatMessageModel(
