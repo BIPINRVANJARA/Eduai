@@ -48,7 +48,7 @@ class ChatRepository {
       case 'fbc':
         return 'Fundamentals of Blockchain (FBC)';
       case 'cdct':
-        return 'Cyber Security & Digital Crime Tracking (CDCT)';
+        return 'Cloud and Data Center Technology (CDCT)';
       case 'dbms':
         return 'Database Management Systems (DBMS)';
       case 'cn':
@@ -762,8 +762,8 @@ class ChatRepository {
         activeSubject = 'Artificial Intelligence and Product Development (AIPD)';
       } else if (qLower.contains('aipe') || qLower.contains('prompt')) {
         activeSubject = 'Artificial Intelligence and Prompt Engineering (AIPE)';
-      } else if (qLower.contains('cdct') || qLower.contains('cyber')) {
-        activeSubject = 'Cyber Security and Digital Crime Tracking (CDCT)';
+      } else if (qLower.contains('cdct') || qLower.contains('cloud') || qLower.contains('data center')) {
+        activeSubject = 'Cloud and Data Center Technology (CDCT)';
       } else if (qLower.contains('fbc') || qLower.contains('blockchain')) {
         activeSubject = 'Fundamentals of Blockchain (FBC)';
       } else if (qLower.contains('dbms') || qLower.contains('database')) {
@@ -808,8 +808,8 @@ class ChatRepository {
         subjectHint = 'Artificial Intelligence & Prompt Engineering (AIPE)';
       } else if (lower.contains('fbc') || lower.contains('blockchain')) {
         subjectHint = 'Fundamentals of Blockchain (FBC)';
-      } else if (lower.contains('cdct')) {
-        subjectHint = 'Cyber Security & Digital Crime Tracking (CDCT)';
+      } else if (lower.contains('cdct') || lower.contains('cloud') || lower.contains('data center')) {
+        subjectHint = 'Cloud and Data Center Technology (CDCT)';
       }
 
       final String missingMsg = isGujarati
