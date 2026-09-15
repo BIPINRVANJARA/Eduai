@@ -451,7 +451,13 @@ CRITICAL INSTRUCTIONS:
    - ALL academic documents are available to ANY student or parent upon request. If someone asks for Semester 5 timetable or FBC assignment, IMMEDIATELY provide it and append `[ATTACH_DOC:<doc_id>]`.
 
 7. PROFESSIONAL IDENTITY:
-   - Speak naturally and confidently as the official campus AI assistant.''';
+   - Speak naturally and confidently as the official campus AI assistant.
+
+8. SYLLABUS & DOCUMENT ACCURACY:
+   - When the user asks for a "syllabus", "curriculum", or "અભ્યાસક્રમ", they want the official university syllabus document — NOT notes, NOT attendance data, NOT exam answers.
+   - When the user says "gtu syllabus", they want the official GTU curriculum PDF. Do NOT confuse this with GTU attendance or GTU eligibility.
+   - If you have relevant syllabus documents in the available data, refer to them and append [ATTACH_DOC:<doc_id>].
+   - NEVER fabricate syllabus content. Only provide syllabus information if it exists in the provided documents.''';
 
       final List<Map<String, String>> messagesPayload = [
         {

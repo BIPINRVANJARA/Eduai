@@ -130,12 +130,51 @@ class ChatRepository {
     final lower = userText.toLowerCase();
     final bool isGujarati = RegExp(r'[\u0A80-\u0AFF]').hasMatch(userText);
 
-    final bool isStudentDataQuery = lower.contains('attendance') ||
+    // ═══════════════════════════════════════════════════════════════════
+    // DOCUMENT-INTENT OVERRIDE: If the query contains a document-type
+    // keyword, it MUST NOT be classified as a personal data query, even
+    // if it also contains words like "gtu", "marks", "internal", etc.
+    // This fixes: "i need gtu syllabus of aipe" → was going to attendance
+    // ═══════════════════════════════════════════════════════════════════
+    final bool hasDocumentIntent = lower.contains('syllabus') ||
+        lower.contains('curriculum') ||
+        lower.contains('અભ્યાસક્રમ') ||
+        lower.contains('પાઠ્યક્રમ') ||
+        lower.contains('lab manual') ||
+        lower.contains('labmanual') ||
+        lower.contains('assignment') ||
+        lower.contains('એસાઇનમેન્ટ') ||
+        lower.contains('timetable') ||
+        lower.contains('time table') ||
+        lower.contains('schedule') ||
+        lower.contains('exam') ||
+        lower.contains('notes') ||
+        lower.contains('circular') ||
+        lower.contains('notice') ||
+        lower.contains('pdf') ||
+        lower.contains('download') ||
+        lower.contains('lab book');
+
+    // Explanation-type keywords (user wants conceptual answer, NOT personal data)
+    final bool wantsExplanation = lower.contains('what is') ||
+        lower.contains('how to') ||
+        lower.contains('explain') ||
+        lower.contains('define') ||
+        lower.contains('describe') ||
+        lower.contains('difference between') ||
+        lower.contains('compare') ||
+        lower.contains('advantages') ||
+        lower.contains('disadvantages') ||
+        lower.contains('સમજાવો') ||
+        lower.contains('समझाएं');
+
+    final bool isStudentDataQuery = !hasDocumentIntent && !wantsExplanation && (
+        lower.contains('attendance') ||
         lower.contains('attendence') ||
         lower.contains('percentage') ||
         lower.contains('eligibility') ||
         lower.contains('eligible') ||
-        lower.contains('gtu') ||
+        lower.contains('defaulter') ||
         lower.contains('હાજરી') ||
         lower.contains('mark') ||
         lower.contains('marks') ||
@@ -143,13 +182,10 @@ class ChatRepository {
         lower.contains('માર્ક') ||
         lower.contains('result') ||
         lower.contains('પરિણામ') ||
-        lower.contains('score') ||
-        lower.contains('internal') ||
-        lower.contains('performance') ||
-        lower.contains('progress') ||
-        lower.contains('grade');
+        lower.contains('grade'));
 
-    final bool isQuestionAnsweringRequest = lower.contains('que') ||
+    final bool isQuestionAnsweringRequest = !hasDocumentIntent && (
+        lower.contains('que') ||
         lower.contains('question') ||
         lower.contains('ans') ||
         lower.contains('answer') ||
@@ -169,7 +205,7 @@ class ChatRepository {
         lower.contains('વિસ્તાર') ||
         lower.contains('उत्तर') ||
         lower.contains('हल') ||
-        lower.contains('समझाएं');
+        lower.contains('समझाएं'));
 
     // 1. Direct Student Attendance, Marks & GTU Eligibility Resolver
     if (isStudentDataQuery) {
@@ -403,8 +439,183 @@ class ChatRepository {
       );
     }
 
-    // B. Priority RAG Document Attachment (When user asks for a document / timetable / assignment)
-    if (!isStudentDataQuery && isDocFetchIntent && !isQuestionAnsweringRequest && SupabaseService.client != null) {
+    // B. Priority Syllabus Resolver (dedicated category-aware search)
+    final bool isSyllabusQuery = lower.contains('syllabus') ||
+        lower.contains('curriculum') ||
+        lower.contains('અભ્યાસક્રમ') ||
+        lower.contains('પાઠ્યક્રમ');
+
+    if (isSyllabusQuery && SupabaseService.client != null) {
+      try {
+        // Direct database query filtered by category = 'syllabus'
+        var syllabusQuery = SupabaseService.client!
+            .from('documents')
+            .select('*')
+            .eq('category', 'syllabus');
+
+        if (currentInstId != null) {
+          syllabusQuery = syllabusQuery.eq('institution_id', currentInstId);
+        }
+
+        final syllabusResults = await syllabusQuery.order('title');
+
+        if (syllabusResults != null && (syllabusResults as List).isNotEmpty) {
+          List<Map<String, dynamic>> matchedDocs = [];
+
+          if (intentSubject != null) {
+            // Filter by subject code/name
+            final subjectFullName = _getSubjectFullName(intentSubject).toLowerCase();
+            final code = intentSubject.toLowerCase();
+
+            matchedDocs = syllabusResults.cast<Map<String, dynamic>>().where((doc) {
+              final title = (doc['title'] ?? '').toString().toLowerCase();
+              final subject = (doc['subject_name'] ?? '').toString().toLowerCase();
+              return title.contains(code) || subject.contains(code) ||
+                     title.contains(subjectFullName) || subject.contains(subjectFullName);
+            }).toList();
+          } else {
+            // No specific subject — return all syllabi for the institution
+            matchedDocs = syllabusResults.cast<Map<String, dynamic>>();
+          }
+
+          if (matchedDocs.isNotEmpty) {
+            final buffer = StringBuffer();
+            final subjectDisplay = intentSubject != null
+                ? _getSubjectFullName(intentSubject)
+                : 'your semester';
+            final primaryDoc = matchedDocs.first;
+            final dept = primaryDoc['department'] ?? 'Information Technology';
+            final sem = primaryDoc['semester'] ?? '5';
+
+            if (isGujarati) {
+              buffer.writeln('📄 **$subjectDisplay** ($dept સેમેસ્ટર $sem) માટે ઉપલબ્ધ અભ્યાસક્રમ / સિલેબસ:');
+            } else {
+              buffer.writeln('Here is the **Syllabus / Curriculum** for **$subjectDisplay** ($dept Sem $sem):');
+            }
+
+            if (matchedDocs.length > 1) {
+              buffer.writeln('');
+              if (isGujarati) {
+                buffer.writeln('કુલ **${matchedDocs.length}** સિલેબસ દસ્તાવેજ ઉપલબ્ધ છે:\n');
+              } else {
+                buffer.writeln('**${matchedDocs.length}** syllabus documents available:\n');
+              }
+              for (int i = 0; i < matchedDocs.length; i++) {
+                buffer.writeln('${i + 1}. **${matchedDocs[i]['title']}**');
+              }
+            }
+
+            final desc = (primaryDoc['description'] ?? primaryDoc['content_summary'] ?? '').toString().trim();
+            if (desc.isNotEmpty && !desc.startsWith('This document contains the class')) {
+              buffer.writeln('\n$desc');
+            }
+
+            return ChatMessageModel(
+              id: DateTime.now().millisecondsSinceEpoch.toString(),
+              sender: ChatSender.ai,
+              text: buffer.toString().trim(),
+              timestamp: DateTime.now(),
+              dataType: ChatDataType.none,
+              payload: {
+                'fileUrl': primaryDoc['file_url'],
+                'title': primaryDoc['title'],
+                'category': 'SYLLABUS',
+                'subject': primaryDoc['subject_name'] ?? subjectDisplay,
+                'department': dept,
+                'semester': sem,
+              },
+            );
+          }
+        }
+      } catch (_) {}
+    }
+
+    // C. Priority Lab Manual Resolver (dedicated category-aware search)
+    final bool isLabManualQuery = lower.contains('lab manual') ||
+        lower.contains('labmanual') ||
+        lower.contains('lab book') ||
+        lower.contains('લેબ મેન્યુઅલ') ||
+        (lower.contains('practical') && (lower.contains('manual') || lower.contains('book') || lower.contains('pdf')));
+
+    if (isLabManualQuery && !isQuestionAnsweringRequest && SupabaseService.client != null) {
+      try {
+        var labQuery = SupabaseService.client!
+            .from('documents')
+            .select('*')
+            .eq('category', 'lab_manual');
+
+        if (currentInstId != null) {
+          labQuery = labQuery.eq('institution_id', currentInstId);
+        }
+
+        final labResults = await labQuery.order('title');
+
+        if (labResults != null && (labResults as List).isNotEmpty) {
+          List<Map<String, dynamic>> matchedDocs = [];
+
+          if (intentSubject != null) {
+            final subjectFullName = _getSubjectFullName(intentSubject).toLowerCase();
+            final code = intentSubject.toLowerCase();
+
+            matchedDocs = labResults.cast<Map<String, dynamic>>().where((doc) {
+              final title = (doc['title'] ?? '').toString().toLowerCase();
+              final subject = (doc['subject_name'] ?? '').toString().toLowerCase();
+              return title.contains(code) || subject.contains(code) ||
+                     title.contains(subjectFullName) || subject.contains(subjectFullName);
+            }).toList();
+          } else {
+            matchedDocs = labResults.cast<Map<String, dynamic>>();
+          }
+
+          if (matchedDocs.isNotEmpty) {
+            final buffer = StringBuffer();
+            final subjectDisplay = intentSubject != null
+                ? _getSubjectFullName(intentSubject)
+                : (matchedDocs.first['subject_name'] ?? 'your subject');
+            final primaryDoc = matchedDocs.first;
+            final dept = primaryDoc['department'] ?? 'Information Technology';
+            final sem = primaryDoc['semester'] ?? '5';
+
+            if (isGujarati) {
+              buffer.writeln('📚 **$subjectDisplay** ($dept સેમેસ્ટર $sem) માટેની લેબ મેન્યુઅલ:');
+            } else {
+              buffer.writeln('Here is the **Lab Manual** for **$subjectDisplay** ($dept Sem $sem):');
+            }
+
+            if (matchedDocs.length > 1) {
+              buffer.writeln('');
+              if (isGujarati) {
+                buffer.writeln('કુલ **${matchedDocs.length}** લેબ મેન્યુઅલ ઉપલબ્ધ છે:\n');
+              } else {
+                buffer.writeln('**${matchedDocs.length}** lab manuals available:\n');
+              }
+              for (int i = 0; i < matchedDocs.length; i++) {
+                buffer.writeln('${i + 1}. **${matchedDocs[i]['title']}**');
+              }
+            }
+
+            return ChatMessageModel(
+              id: DateTime.now().millisecondsSinceEpoch.toString(),
+              sender: ChatSender.ai,
+              text: buffer.toString().trim(),
+              timestamp: DateTime.now(),
+              dataType: ChatDataType.none,
+              payload: {
+                'fileUrl': primaryDoc['file_url'],
+                'title': primaryDoc['title'],
+                'category': 'LAB MANUAL',
+                'subject': primaryDoc['subject_name'] ?? subjectDisplay,
+                'department': dept,
+                'semester': sem,
+              },
+            );
+          }
+        }
+      } catch (_) {}
+    }
+
+    // D. Priority RAG Document Attachment (When user asks for a document / timetable / assignment)
+    if (isDocFetchIntent && !isQuestionAnsweringRequest && SupabaseService.client != null) {
       try {
         Map<String, dynamic>? targetDoc;
 
