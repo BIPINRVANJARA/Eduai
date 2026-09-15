@@ -33,7 +33,7 @@ class _StudentChatScreenState extends State<StudentChatScreen> {
     super.initState();
     _fetchStudentContext();
     _messages.add(_Message(
-      text: "Hello! I'm your CampusOS AI assistant. Ask me about your timetables, lab manuals, assignments, or general college queries.",
+      text: "Hello! I'm your Edu AI assistant. Ask me about your timetables, lab manuals, assignments, or general college queries.",
       isUser: false,
     ));
   }
@@ -159,7 +159,7 @@ class _StudentChatScreenState extends State<StudentChatScreen> {
       if (responseText == null) {
         final aiResponse = await SupabaseService.queryGroqDirect(
           userText: text,
-          collegeName: "CampusOS College",
+          collegeName: "Edu AI Institution",
           isVerified: _studentData != null,
         );
         responseText = aiResponse ?? "Sorry, I couldn't process your request right now.";

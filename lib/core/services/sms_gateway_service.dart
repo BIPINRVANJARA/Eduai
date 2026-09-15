@@ -21,7 +21,7 @@ class SmsGatewayService {
     final cleanMobile = mobileNo.replaceAll(RegExp(r'\D'), '');
     final tenDigitMobile = cleanMobile.length >= 10 ? cleanMobile.substring(cleanMobile.length - 10) : cleanMobile;
     final formattedMobile = '91$tenDigitMobile';
-    final messageText = 'Your CampusOS Parent Verification OTP code is: $otpCode. Valid for 10 minutes.';
+    final messageText = 'Your Edu AI Parent Verification OTP code is: $otpCode. Valid for 10 minutes.';
 
     if (kDebugMode) {
       print('📲 [SMS Gateway] Dispatching Real SMS to +$formattedMobile with OTP: $otpCode');

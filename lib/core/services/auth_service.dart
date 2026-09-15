@@ -50,7 +50,7 @@ class AuthService {
         }
       }
       return res;
-    } on AuthException catch (e) {
+    } on AuthException {
       // If auth fails (e.g. user was approved in admin panel but auth signup was rate-limited earlier)
       final studentRes = await _client
           .from('students')
@@ -399,10 +399,13 @@ class AuthService {
     }, onConflict: 'email');
   }
 
-  static Future<void> linkStudentParent(String studentProfileId, String parentProfileId) async {
+  static Future<void> linkStudentAndParentByEmail({
+    required String studentEmail,
+    required String parentEmail,
+  }) async {
     try {
-      final studentRes = await _client.from('students').select('id').eq('profile_id', studentProfileId).maybeSingle();
-      final parentRes = await _client.from('parents').select('id').eq('profile_id', parentProfileId).maybeSingle();
+      final studentRes = await _client.from('students').select('id').eq('email', studentEmail.trim()).maybeSingle();
+      final parentRes = await _client.from('parents').select('id').eq('email', parentEmail.trim()).maybeSingle();
 
       if (studentRes != null && parentRes != null) {
         await _client.from('student_parent_links').upsert({
@@ -411,8 +414,6 @@ class AuthService {
           'relationship': 'parent',
         }, onConflict: 'student_id,parent_id');
       }
-    } catch (e) {
-      // Ignore link error if already linked
-    }
+    } catch (_) {}
   }
 }

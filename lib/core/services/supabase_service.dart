@@ -69,17 +69,12 @@ class SupabaseService {
             final inst = Map<String, dynamic>.from(item);
             final instAdminEmail = (inst['admin_email'] ?? '').toString().trim().toLowerCase();
             final instContactEmail = (inst['contact_email'] ?? '').toString().trim().toLowerCase();
-            final instCode = (inst['code'] ?? '').toString().trim().toLowerCase();
             final storedPassword = (inst['admin_password'] ?? 'GPH@2026!').toString().trim();
 
             bool emailMatch = (instAdminEmail.isNotEmpty && instAdminEmail == cleanEmail) ||
-                              (instContactEmail.isNotEmpty && instContactEmail == cleanEmail) ||
-                              cleanEmail == 'admin@gph.ac.in' ||
-                              (instCode.isNotEmpty && cleanEmail.contains(instCode));
+                              (instContactEmail.isNotEmpty && instContactEmail == cleanEmail);
 
-            bool passwordMatch = storedPassword == cleanPassword ||
-                                cleanPassword == 'GPH@2026!' ||
-                                cleanPassword == 'admin123';
+            bool passwordMatch = storedPassword.isNotEmpty && storedPassword == cleanPassword;
 
             if (emailMatch && passwordMatch) {
               return inst;
@@ -91,19 +86,6 @@ class SupabaseService {
       if (kDebugMode) print('authenticateCollegeAdmin exception: $e');
     }
 
-    // Default fallback credentials check
-    final cleanEmail = email.trim().toLowerCase();
-    final cleanPassword = password.trim();
-    if (cleanEmail == 'admin@gph.ac.in' && (cleanPassword == 'GPH@2026!' || cleanPassword == 'admin123')) {
-      return {
-        'id': '6c6e9b83-cabf-4b13-855b-97d2e1461177',
-        'code': '624',
-        'name': 'Government Polytechnic Himmatnagar',
-        'short_name': 'GPH Himmatnagar',
-        'admin_email': 'admin@gph.ac.in',
-        'admin_password': 'GPH@2026!',
-      };
-    }
     return null;
   }
 

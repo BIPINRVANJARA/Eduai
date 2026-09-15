@@ -311,7 +311,7 @@ class _StudentHomeScreenState extends State<StudentHomeScreen> {
                 onPressed: () => context.push('/student-chat'),
                 icon: const Icon(Icons.auto_awesome_rounded, size: 20),
                 label: const Text(
-                  'Ask Timestunner AI Copilot',
+                  'Ask Edu AI Copilot',
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
                 ),
                 style: ElevatedButton.styleFrom(

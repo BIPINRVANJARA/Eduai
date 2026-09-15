@@ -40,11 +40,11 @@ export default function Sidebar() {
         <div className="flex items-center gap-3">
           <img 
             src="/app_icon.png" 
-            alt="Eduai Logo" 
+            alt="Edu AI Logo" 
             className="w-9 h-9 rounded-xl border border-primary/30 object-cover shadow-sm"
           />
           <div className="min-w-0 flex-1">
-            <h1 className="text-xl font-extrabold text-text-primary tracking-tight">Eduai</h1>
+            <h1 className="text-xl font-extrabold text-text-primary tracking-tight">Edu AI</h1>
             <span className="text-[10px] text-primary uppercase font-bold tracking-wider block truncate">
               {institution?.short_name || institution?.name || 'Institution Admin'}
             </span>

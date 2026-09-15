@@ -55,7 +55,7 @@ const SCREEN_IMAGE_MAP: Record<IPhoneScreenType, string> = {
 export default function IPhone17Mockup({
   screen = 'student-hero',
   imageSrc,
-  alt = 'Timestunner Mobile Application Screenshot',
+  alt = 'Edu AI Mobile Application Screenshot',
   className = '',
   tiltDegree = 0,
   customContent,

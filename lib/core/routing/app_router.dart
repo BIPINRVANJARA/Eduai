@@ -9,7 +9,7 @@ import '../../features/auth/student_register_screen.dart';
 import '../../features/student/student_home_screen.dart';
 import '../../features/parent/parent_home_screen.dart';
 import '../../features/student/student_documents_screen.dart';
-import '../../features/chatbot/student_chat_screen.dart';
+import '../../features/chatbot/chat_screen.dart';
 import '../services/auth_service.dart';
 
 final appRouter = GoRouter(
@@ -77,7 +77,7 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: '/student-chat',
-      builder: (context, state) => const StudentChatScreen(),
+      builder: (context, state) => const ChatScreen(),
     ),
   ],
 );

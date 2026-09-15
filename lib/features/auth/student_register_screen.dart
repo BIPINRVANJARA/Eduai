@@ -5,7 +5,6 @@ import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/theme/app_theme.dart';
-import '../../providers/auth_provider.dart';
 
 class StudentRegisterScreen extends ConsumerStatefulWidget {
   const StudentRegisterScreen({super.key});
@@ -74,7 +73,7 @@ class _StudentRegisterScreenState extends ConsumerState<StudentRegisterScreen> {
           .select('id, name, short_name, code')
           .order('name', ascending: true);
 
-      if (res != null && (res as List).isNotEmpty) {
+      if ((res as List).isNotEmpty) {
         setState(() {
           _availableInstitutions = List<Map<String, dynamic>>.from(res);
           if (!_availableInstitutions.any((i) => i['id'] == _institutionId)) {
@@ -98,7 +97,7 @@ class _StudentRegisterScreenState extends ConsumerState<StudentRegisterScreen> {
           .eq('status', 'active')
           .order('name', ascending: true);
 
-      if (res != null && (res as List).isNotEmpty) {
+      if ((res as List).isNotEmpty) {
         final names = (res as List)
             .map((d) => d['name']?.toString().trim() ?? '')
             .where((n) => n.isNotEmpty)
@@ -222,9 +221,8 @@ class _StudentRegisterScreenState extends ConsumerState<StudentRegisterScreen> {
         institutionId: _institutionId,
       );
 
-      // 2. Insert Parent Record in parents table
+      // 2. Insert Parent Record in parents table (clean isolated parent identity)
       await AuthService.createParentRecord(
-        profileId: studentId,
         email: _parentEmailController.text.trim(),
         fullName: 'Parent of ${_fullNameController.text.trim()}',
         mobile: _parentMobileController.text.trim(),
@@ -244,6 +242,12 @@ class _StudentRegisterScreenState extends ConsumerState<StudentRegisterScreen> {
         division: _division!,
         birthdate: _dob!.toIso8601String().split('T').first,
         institutionId: _institutionId,
+      );
+
+      // 4. Link Student & Parent in student_parent_links table
+      await AuthService.linkStudentAndParentByEmail(
+        studentEmail: _studentEmailController.text.trim(),
+        parentEmail: _parentEmailController.text.trim(),
       );
 
       if (!mounted) return;

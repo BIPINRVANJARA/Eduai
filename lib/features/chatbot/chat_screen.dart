@@ -4,7 +4,6 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../core/services/voice_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/chat_message_model.dart';
@@ -76,7 +75,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.surface.withOpacity(0.95),
         elevation: 0,
-        titleSpacing: 16,
+        titleSpacing: Navigator.of(context).canPop() ? 0 : 16,
+        leading: Navigator.of(context).canPop()
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.textPrimary, size: 18),
+                tooltip: 'Back',
+                onPressed: () => context.pop(),
+              )
+            : null,
         title: Row(
           children: [
             // Glowing AI Spark Avatar

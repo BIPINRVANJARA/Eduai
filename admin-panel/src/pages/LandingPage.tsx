@@ -113,7 +113,7 @@ export default function LandingPage() {
             </div>
             <div className="flex flex-col">
               <span className="text-base font-extrabold tracking-tight text-white group-hover:text-primary transition-colors">
-                Timestunner
+                Edu AI
               </span>
               <span className="text-[9px] uppercase tracking-widest text-text-secondary -mt-1 font-semibold">
                 Eduai Academic OS
@@ -215,7 +215,7 @@ export default function LandingPage() {
 
             {/* Supporting Copy */}
             <p className="text-base sm:text-lg text-text-secondary max-w-xl font-normal leading-relaxed">
-              Timestunner connects students, parents, faculty, and institutions through one intelligent academic system. Less searching. Less paperwork. More academic control.
+              Edu AI connects students, parents, faculty, and institutions through one intelligent academic system. Less searching. Less paperwork. More academic control.
             </p>
 
             {/* CTAs */}
@@ -224,7 +224,7 @@ export default function LandingPage() {
                 href="#experience"
                 className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-primary hover:bg-[#c4f85e] text-[#0B0F17] font-black text-sm transition-all shadow-xl shadow-primary/20 flex items-center justify-center gap-2 group cursor-pointer"
               >
-                <span>Explore Timestunner</span>
+                <span>Explore Edu AI</span>
                 <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
               </a>
 
@@ -289,7 +289,7 @@ export default function LandingPage() {
             Academic information shouldn't be scattered everywhere.
           </h2>
           <p className="text-base text-text-secondary leading-relaxed">
-            Students and faculty waste hours searching across disconnected channels, while parents remain completely in the dark. Timestunner replaces confusion with clarity.
+            Students and faculty waste hours searching across disconnected channels, while parents remain completely in the dark. Edu AI replaces confusion with clarity.
           </p>
         </div>
 
@@ -324,13 +324,13 @@ export default function LandingPage() {
             </div>
           </div>
 
-          {/* Timestunner Unified OS */}
+          {/* Edu AI Unified OS */}
           <div className="bg-gradient-to-br from-[#131B2A] to-[#172338] border border-primary/30 rounded-3xl p-8 space-y-6 flex flex-col justify-between shadow-2xl relative overflow-hidden">
             <div className="absolute top-0 right-0 w-36 h-36 bg-primary/10 rounded-full blur-2xl pointer-events-none" />
             
             <div className="space-y-4 relative z-10">
               <span className="text-[11px] uppercase tracking-widest font-extrabold text-primary bg-primary/15 px-3 py-1 rounded-md inline-block">
-                Timestunner Experience
+                Edu AI Experience
               </span>
               <h3 className="text-xl font-bold text-white">One Intelligent Academic System</h3>
               <p className="text-sm text-text-secondary leading-relaxed">
@@ -571,7 +571,7 @@ export default function LandingPage() {
             Ask your academics.
           </h2>
           <p className="text-base text-text-secondary">
-            Timestunner's AI Copilot understands your academic context and retrieves verified information directly from your institution's live database.
+            Edu AI's AI Copilot understands your academic context and retrieves verified information directly from your institution's live database.
           </p>
         </div>
 
@@ -686,7 +686,7 @@ export default function LandingPage() {
               An academic system with intelligence built in.
             </h2>
             <p className="text-sm text-text-secondary leading-relaxed">
-              Unlike generic public chatbots, Timestunner operates on a closed-loop academic pipeline. It connects directly to live student rosters, GTU syllabus rules, uploaded lab manuals, and faculty announcements.
+              Unlike generic public chatbots, Edu AI operates on a closed-loop academic pipeline. It connects directly to live student rosters, GTU syllabus rules, uploaded lab manuals, and faculty announcements.
             </p>
           </div>
 
@@ -706,7 +706,7 @@ export default function LandingPage() {
                 <span className="text-primary font-mono text-[10px]">Live</span>
               </div>
               <div className="p-3 bg-gradient-to-r from-surface to-cyan/15 rounded-xl border border-cyan/30 flex items-center justify-between font-bold">
-                <span className="text-cyan flex items-center gap-1.5"><Sparkles size={14} /> Timestunner Academic AI Core</span>
+                <span className="text-cyan flex items-center gap-1.5"><Sparkles size={14} /> Edu AI Academic AI Core</span>
                 <span className="text-white text-[10px] bg-cyan/20 px-2 py-0.5 rounded">Deterministic</span>
               </div>
             </div>
@@ -760,7 +760,7 @@ export default function LandingPage() {
                 <span className="text-xs font-extrabold text-primary uppercase tracking-wider">For Students</span>
                 <h3 className="text-2xl sm:text-3xl font-extrabold text-white">Stay ahead of your semester.</h3>
                 <p className="text-sm text-text-secondary leading-relaxed">
-                  Never miss a lecture or find out you're debarred when it's too late. Timestunner gives you complete real-time visibility over your daily schedule, attendance standing, internal marks, and exam notes.
+                  Never miss a lecture or find out you're debarred when it's too late. Edu AI gives you complete real-time visibility over your daily schedule, attendance standing, internal marks, and exam notes.
                 </p>
                 <div className="grid grid-cols-2 gap-3 pt-2 text-xs">
                   <div className="p-3 bg-[#0B0F17] rounded-xl border border-white/5">
@@ -810,7 +810,7 @@ export default function LandingPage() {
                 <span className="text-xs font-extrabold text-primary uppercase tracking-wider">For Faculty & HODs</span>
                 <h3 className="text-2xl sm:text-3xl font-extrabold text-white">Spend less time maintaining spreadsheets.</h3>
                 <p className="text-sm text-text-secondary leading-relaxed">
-                  Upload subject attendance rolls and marks spreadsheets once. Timestunner automatically parses rows, maps enrollment numbers, and computes student averages.
+                  Upload subject attendance rolls and marks spreadsheets once. Edu AI automatically parses rows, maps enrollment numbers, and computes student averages.
                 </p>
                 <div className="grid grid-cols-2 gap-3 pt-2 text-xs">
                   <div className="p-3 bg-[#0B0F17] rounded-xl border border-white/5">
@@ -901,7 +901,7 @@ export default function LandingPage() {
             {/* Right: Structured Output */}
             <div className="md:col-span-5 bg-[#0B0F17] p-6 rounded-2xl border border-primary/30 space-y-3">
               <div className="flex items-center justify-between text-xs font-bold text-white">
-                <span>Timestunner Live Database</span>
+                <span>Edu AI Live Database</span>
                 <span className="text-primary text-[10px] font-mono">
                   {ingestionState === 'completed' ? 'Synced' : 'Waiting'}
                 </span>
@@ -928,7 +928,7 @@ export default function LandingPage() {
             Different experiences.
           </h2>
           <p className="text-base text-text-secondary">
-            Students and parents access Timestunner via mobile. Faculty and institution administrators operate through the high-density desktop web dashboard.
+            Students and parents access Edu AI via mobile. Faculty and institution administrators operate through the high-density desktop web dashboard.
           </p>
         </div>
 
@@ -938,7 +938,7 @@ export default function LandingPage() {
           {/* Left: Mobile App */}
           <div className="lg:col-span-5 flex flex-col items-center">
             <IPhone17Mockup screen="student-hero" className="scale-95" />
-            <span className="text-xs font-bold text-text-secondary mt-3">Timestunner Mobile (Student & Parent)</span>
+            <span className="text-xs font-bold text-text-secondary mt-3">Edu AI Mobile (Student & Parent)</span>
           </div>
 
           {/* Right: Desktop Browser Preview */}
@@ -948,7 +948,7 @@ export default function LandingPage() {
                 <div className="w-3 h-3 rounded-full bg-danger/80" />
                 <div className="w-3 h-3 rounded-full bg-warning/80" />
                 <div className="w-3 h-3 rounded-full bg-primary/80" />
-                <span className="text-[11px] font-mono text-text-secondary ml-2">campus.timestunner.ac.in/admin</span>
+                <span className="text-[11px] font-mono text-text-secondary ml-2">campus.eduai.ac.in/admin</span>
               </div>
               <span className="text-[10px] bg-primary/10 text-primary font-bold px-2 py-0.5 rounded">Active SaaS Session</span>
             </div>
@@ -1002,7 +1002,7 @@ export default function LandingPage() {
               Every institution gets its own secure academic environment.
             </h2>
             <p className="text-sm text-text-secondary leading-relaxed">
-              Timestunner enforces row-level security and strict multi-tenant isolation. Academic records belonging to Asian Institute of Technology never cross into Government Polytechnic Himmatnagar.
+              Edu AI enforces row-level security and strict multi-tenant isolation. Academic records belonging to Asian Institute of Technology never cross into Government Polytechnic Himmatnagar.
             </p>
 
             <div className="space-y-3 pt-2 text-xs">
@@ -1077,7 +1077,7 @@ export default function LandingPage() {
             Built for speed and precision.
           </h2>
           <p className="text-xs text-text-secondary">
-            Engineering design targets measured across the Timestunner platform cluster:
+            Engineering design targets measured across the Edu AI platform cluster:
           </p>
         </div>
 
@@ -1116,7 +1116,7 @@ export default function LandingPage() {
           "Technology should remove academic friction, not create another portal to manage."
         </blockquote>
         <p className="text-xs sm:text-sm text-text-secondary mt-6 max-w-xl mx-auto leading-relaxed">
-          Timestunner was designed around real academic workflows — giving students clarity, parents quiet confidence, and institutions flawless coordination.
+          Edu AI was designed around real academic workflows — giving students clarity, parents quiet confidence, and institutions flawless coordination.
         </p>
       </section>
 
@@ -1129,7 +1129,7 @@ export default function LandingPage() {
             Bring your academic system together.
           </h2>
           <p className="text-base text-text-secondary max-w-xl mx-auto">
-            Timestunner gives students, parents, faculty, and institutions one intelligent place to stay in sync.
+            Edu AI gives students, parents, faculty, and institutions one intelligent place to stay in sync.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
@@ -1173,13 +1173,13 @@ export default function LandingPage() {
               <div className="w-6 h-6 rounded-lg bg-surface border border-white/10 flex items-center justify-center text-primary font-black text-xs">
                 T
               </div>
-              <span className="font-extrabold text-white text-sm">Timestunner</span>
+              <span className="font-extrabold text-white text-sm">Edu AI</span>
             </div>
             <p className="text-text-secondary text-[11px] leading-relaxed">
               The AI-powered Academic Operating System for colleges, students, and parents.
             </p>
             <p className="text-[10px] text-text-secondary/60">
-              © 2026 Timestunner · Eduai Platform
+              © 2026 Edu AI · Eduai Platform
             </p>
           </div>
 
@@ -1254,7 +1254,7 @@ export default function LandingPage() {
               <>
                 <div className="space-y-1">
                   <span className="text-[10px] font-bold text-primary uppercase tracking-wider">Institutional Pilot</span>
-                  <h3 className="text-xl font-extrabold text-white">Request Timestunner for Your Campus</h3>
+                  <h3 className="text-xl font-extrabold text-white">Request Edu AI for Your Campus</h3>
                   <p className="text-xs text-text-secondary">
                     Schedule a 15-minute live platform demonstration and pilot setup.
                   </p>

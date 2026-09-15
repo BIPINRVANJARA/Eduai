@@ -144,7 +144,7 @@ export default function AttendanceMarksPage() {
     const worksheet = XLSX.utils.json_to_sheet(sampleData)
     const workbook = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Attendance & Marks')
-    XLSX.writeFile(workbook, 'Timestunner_Attendance_Marks_Template.xlsx')
+    XLSX.writeFile(workbook, 'Edu AI_Attendance_Marks_Template.xlsx')
   }
 
   // 2. PARSE EXCEL / CSV FILE

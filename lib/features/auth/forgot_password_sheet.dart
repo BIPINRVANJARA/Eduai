@@ -34,11 +34,9 @@ class _ForgotPasswordSheetState extends State<ForgotPasswordSheet> {
 
   int _step = 0; // 0 = Input, 1 = OTP Verification, 2 = Set New Password, 3 = Success
   bool _isLoading = false;
-  bool _isOtpMode = false;
   bool _obscurePassword = true;
   String? _resolvedEmail;
   String? _resolvedMobile;
-  String? _studentName;
   String? _generatedOtp;
   int _resendCountdown = 45;
   Timer? _timer;
@@ -98,21 +96,19 @@ class _ForgotPasswordSheetState extends State<ForgotPasswordSheet> {
     try {
       String targetEmail = query;
       String? targetMobile;
-      String? studentName;
 
       // 1. Check if user entered an enrollment number or mobile
       final isEnrollmentOrMobile = RegExp(r'^[0-9]+$').hasMatch(query);
       if (isEnrollmentOrMobile) {
         final studentRes = await Supabase.instance.client
             .from('students')
-            .select('email, mobile, full_name')
+            .select('email, mobile')
             .or('enrollment_no.eq.$query,mobile.eq.$query')
             .maybeSingle();
 
         if (studentRes != null) {
           targetEmail = (studentRes['email'] ?? '').toString();
           targetMobile = studentRes['mobile']?.toString();
-          studentName = studentRes['full_name']?.toString();
         } else {
           throw Exception('No student record found matching "$query". Please check your enrollment number or contact your college admin.');
         }
@@ -124,7 +120,6 @@ class _ForgotPasswordSheetState extends State<ForgotPasswordSheet> {
 
       _resolvedEmail = targetEmail;
       _resolvedMobile = targetMobile;
-      _studentName = studentName;
 
       // 2. Trigger Supabase Password Reset Email
       await Supabase.instance.client.auth.resetPasswordForEmail(targetEmail);
@@ -167,7 +162,6 @@ class _ForgotPasswordSheetState extends State<ForgotPasswordSheet> {
       _startTimer();
 
       setState(() {
-        _isOtpMode = true;
         _step = 1; // OTP entry step
       });
     } catch (e) {
