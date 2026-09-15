@@ -2052,4 +2052,258 @@ For **$subject**, Question $qNum addresses core theoretical foundations and anal
 
     return buffer.toString().trim();
   }
+
+  // -------------------------------------------------------------------------
+  // OFFICIAL GTU SYLLABUS & CURRICULUM SOLVER
+  // -------------------------------------------------------------------------
+  static String getSyllabusResponse({
+    required String userText,
+    required String language,
+    String? specificSubject,
+  }) {
+    final bool isGujarati = language == 'GUJARATI';
+    final lower = userText.toLowerCase();
+
+    String? sub = specificSubject;
+    if (sub == null) {
+      if (lower.contains('aipd') || lower.contains('product design') || lower.contains('product development') || lower.contains('ai product')) {
+        sub = 'aipd';
+      } else if (lower.contains('aipe') || lower.contains('prompt engineering') || lower.contains('prompt')) {
+        sub = 'aipe';
+      } else if (lower.contains('cdct') || lower.contains('cloud') || lower.contains('data center') || lower.contains('cyber') || lower.contains('security')) {
+        sub = 'cdct';
+      } else if (lower.contains('fbc') || lower.contains('blockchain') || lower.contains('foundation of blockchain')) {
+        sub = 'fbc';
+      }
+    }
+
+    final buffer = StringBuffer();
+
+    if (sub == 'aipe') {
+      if (isGujarati) {
+        buffer.writeln('📘 **GTU ડિપ્લોમા સેમેસ્ટર 5 — Artificial Intelligence with Prompt Engineering (AIPE)**');
+        buffer.writeln('📋 **વિષય કોડ:** `DI05016011` | **વિભાગ:** ઇન્ફોર્મેશન ટેકનોલોજી (IT)\n');
+        buffer.writeln('📌 **અભ્યાસક્રમ (Syllabus Units & Topics):**\n');
+        buffer.writeln('• **Unit 1: Introduction to Artificial Intelligence & Search Algorithms**');
+        buffer.writeln('  - AI નો ઇતિહાસ, વ્યાખ્યા અને કાર્યક્ષેત્ર (History & Scope)');
+        buffer.writeln('  - Problem Formulation અને State Space Search');
+        buffer.writeln('  - Uninformed Search (BFS, DFS) અને Informed/Heuristic Search (A* Search)');
+        buffer.writeln('  - Adversarial Search: Game Playing, Minimax Algorithm, Alpha-Beta Pruning');
+        buffer.writeln('  - Rational Agents અને PEAS Framework (Performance, Environment, Actuators, Sensors)\n');
+        buffer.writeln('• **Unit 2: Large Language Models (LLMs) & Transformers Architecture**');
+        buffer.writeln('  - LLMs નો પરિચય અને Transformer Model Architecture (Encoder-Decoder)');
+        buffer.writeln('  - Self-Attention Mechanism અને Multi-Head Attention');
+        buffer.writeln('  - Tokenization પદ્ધતિઓ (BPE, WordPiece)');
+        buffer.writeln('  - Model Pre-training vs Fine-Tuning અને Instruction Tuning (RLHF)');
+        buffer.writeln('  - LLM Hallucination અને તેને રોકવાના ઉપાયો\n');
+        buffer.writeln('• **Unit 3: Prompt Engineering Fundamentals & Techniques**');
+        buffer.writeln('  - Prompt Engineering ના મૂળભૂત સિદ્ધાંતો');
+        buffer.writeln('  - Zero-shot, One-shot, અને Few-shot Prompting');
+        buffer.writeln('  - Chain-of-Thought (CoT) Prompting અને Step-by-Step Reasoning');
+        buffer.writeln('  - Role Prompting, System Prompts, Delimiters નો ઉપયોગ');
+        buffer.writeln('  - LLM Parameters: Temperature, Top-p, Top-k, Max Tokens');
+        buffer.writeln('  - Prompt Injection Attacks અને Defensive Prompting\n');
+        buffer.writeln('• **Unit 4: Advanced Prompting, RAG & Autonomous AI Agents**');
+        buffer.writeln('  - Retrieval-Augmented Generation (RAG) Architecture');
+        buffer.writeln('  - Vector Embeddings, Cosine Similarity અને Vector Databases');
+        buffer.writeln('  - Directional Stimulus Prompting અને Tree-of-Thoughts (ToT)');
+        buffer.writeln('  - Autonomous Multi-Agent Systems અને Tool Calling');
+        buffer.writeln('  - LangChain અને LLM Application Development Frameworks');
+      } else {
+        buffer.writeln('📘 **GTU Diploma Semester 5 — Artificial Intelligence with Prompt Engineering (AIPE)**');
+        buffer.writeln('📋 **Course Code:** `DI05016011` | **Department:** Information Technology (IT)\n');
+        buffer.writeln('📌 **Official GTU Syllabus Units & Core Topics:**\n');
+        buffer.writeln('• **Unit 1: Introduction to Artificial Intelligence & Search Algorithms**');
+        buffer.writeln('  - History, definitions, and applications of Artificial Intelligence');
+        buffer.writeln('  - Problem formulation, state space representation, and goal states');
+        buffer.writeln('  - Uninformed Search: Breadth-First Search (BFS), Depth-First Search (DFS)');
+        buffer.writeln('  - Informed / Heuristic Search: A* Search algorithm, Greedy Best-First Search');
+        buffer.writeln('  - Game Playing: Minimax algorithm, Alpha-Beta pruning');
+        buffer.writeln('  - Intelligent Agents: Rational agents and PEAS framework (Performance, Environment, Actuators, Sensors)\n');
+        buffer.writeln('• **Unit 2: Large Language Models (LLMs) & Transformers Architecture**');
+        buffer.writeln('  - Evolution of NLP to Large Language Models (LLMs)');
+        buffer.writeln('  - Transformer architecture: Encoder-Decoder stacks, Self-Attention mechanism, Multi-Head Attention');
+        buffer.writeln('  - Tokenization techniques (Byte-Pair Encoding, WordPiece)');
+        buffer.writeln('  - Pre-training vs Fine-tuning; Instruction tuning and RLHF (Reinforcement Learning from Human Feedback)');
+        buffer.writeln('  - Understanding and mitigating LLM Hallucinations\n');
+        buffer.writeln('• **Unit 3: Prompt Engineering Fundamentals & Core Techniques**');
+        buffer.writeln('  - Principles of effective prompt design and prompt components');
+        buffer.writeln('  - Zero-Shot, One-Shot, and Few-Shot prompting techniques');
+        buffer.writeln('  - Chain-of-Thought (CoT) prompting for multi-step reasoning');
+        buffer.writeln('  - Role prompting, system message constraints, and structured output formatting');
+        buffer.writeln('  - Hyperparameters: Temperature, Top-p (nucleus sampling), Top-k, Max Tokens');
+        buffer.writeln('  - Prompt injection vulnerabilities, jailbreaking, and defensive prompting strategies\n');
+        buffer.writeln('• **Unit 4: Advanced Prompting, RAG & Autonomous AI Agents**');
+        buffer.writeln('  - Retrieval-Augmented Generation (RAG) end-to-end architecture');
+        buffer.writeln('  - Text embeddings, vector similarity search (Cosine, Euclidean), and Vector Databases');
+        buffer.writeln('  - Directional Stimulus Prompting and Tree-of-Thoughts (ToT) reasoning frameworks');
+        buffer.writeln('  - Autonomous AI Agents, Tool-Use/Function Calling, and ReAct framework');
+        buffer.writeln('  - LLM application frameworks: LangChain, LlamaIndex, and Groq inference integration');
+      }
+    } else if (sub == 'aipd') {
+      if (isGujarati) {
+        buffer.writeln('📘 **GTU ડિપ્લોમા સેમેસ્ટર 5 — AI Product Design (AIPD)**');
+        buffer.writeln('📋 **વિષય કોડ:** `DI05016021` | **વિભાગ:** ઇન્ફોર્મેશન ટેકનોલોજી (IT)\n');
+        buffer.writeln('📌 **અભ્યાસક્રમ (Syllabus Units & Topics):**\n');
+        buffer.writeln('• **Unit 1: Foundations of AI Products & Design Thinking**');
+        buffer.writeln('  - AI Product વિરુદ્ધ પારંપરિક સોફ્ટવેર (Traditional vs AI Products)');
+        buffer.writeln('  - Design Thinking પ્રક્રિયા: Empathize, Define, Ideate, Prototype, Test');
+        buffer.writeln('  - Human-Centered AI (HCAI) ના સિદ્ધાંતો અને યુઝર નીડ્સ\n');
+        buffer.writeln('• **Unit 2: AI Product Lifecycle & Engineering**');
+        buffer.writeln('  - Problem-Solution Fit અને AI Feasibility Analysis');
+        buffer.writeln('  - Dataset Collection, Data Annotation, Data Cleaning');
+        buffer.writeln('  - Model Selection, Baseline Models, Evaluation Metrics (Precision, Recall, F1, Latency)');
+        buffer.writeln('  - AI Model Deployment, Monitoring, અને Feedback Loops\n');
+        buffer.writeln('• **Unit 3: AI UX/UI, Ethics, Fairness & Governance**');
+        buffer.writeln('  - AI Interface Design: Trust, Transparency, Explainability (XAI)');
+        buffer.writeln('  - User Error Handling અને Graceful Failure States');
+        buffer.writeln('  - Algorithmic Bias, Fairness, Ethics, અને Data Privacy (GDPR)');
+      } else {
+        buffer.writeln('📘 **GTU Diploma Semester 5 — AI Product Design (AIPD)**');
+        buffer.writeln('📋 **Course Code:** `DI05016021` | **Department:** Information Technology (IT)\n');
+        buffer.writeln('📌 **Official GTU Syllabus Units & Core Topics:**\n');
+        buffer.writeln('• **Unit 1: Foundations of AI Products & Design Thinking**');
+        buffer.writeln('  - Core differences between AI products and traditional software applications');
+        buffer.writeln('  - Design Thinking framework: Empathize, Define, Ideate, Prototype, Test');
+        buffer.writeln('  - Human-Centered AI (HCAI) design principles and user needs discovery\n');
+        buffer.writeln('• **Unit 2: AI Product Lifecycle & Engineering**');
+        buffer.writeln('  - Problem-solution fit and evaluating AI feasibility vs deterministic software');
+        buffer.writeln('  - Training data collection, labeling, data hygiene, and privacy');
+        buffer.writeln('  - Model selection trade-offs (accuracy, latency, cost, hardware requirements)');
+        buffer.writeln('  - Product metrics vs model evaluation metrics (Precision, Recall, F1, AUC-ROC)');
+        buffer.writeln('  - Deployment strategies, continuous monitoring, and user feedback pipelines\n');
+        buffer.writeln('• **Unit 3: AI UX/UI, Ethics, Fairness & Governance**');
+        buffer.writeln('  - Designing for trust: Explainable AI (XAI) and communicating uncertainty to users');
+        buffer.writeln('  - Designing for failures: Graceful degradation and user control overrides');
+        buffer.writeln('  - Algorithmic bias identification, fairness audits, and ethical AI development');
+        buffer.writeln('  - Data privacy regulations (GDPR/DPDP) and responsible AI governance');
+      }
+    } else if (sub == 'cdct') {
+      if (isGujarati) {
+        buffer.writeln('📘 **GTU ડિપ્લોમા સેમેસ્ટર 5 — Cloud and Data Center Technology (CDCT)**');
+        buffer.writeln('📋 **વિષય કોડ:** `DI05016031` | **વિભાગ:** ઇન્ફોર્મેશન ટેકનોલોજી (IT)\n');
+        buffer.writeln('📌 **અભ્યાસક્રમ (Syllabus Units & Topics):**\n');
+        buffer.writeln('• **Unit 1: Cloud Computing Foundations & Virtualization**');
+        buffer.writeln('  - ક્લાઉડ સર્વિસ મોડલ્સ: IaaS, PaaS, SaaS');
+        buffer.writeln('  - ડિપ્લોયમેન્ટ મોડલ્સ: Public, Private, Hybrid, Community Cloud');
+        buffer.writeln('  - વર્ચ્યુઅલાઈઝેશન ટેકનોલોજી: Hypervisors (Type-1 vs Type-2)');
+        buffer.writeln('  - Containers (Docker) vs Virtual Machines (VMs)\n');
+        buffer.writeln('• **Unit 2: Data Center Architecture & Storage Infrastructure**');
+        buffer.writeln('  - Data Center Tiers (Tier 1 થી Tier 4 Standout Features)');
+        buffer.writeln('  - સર્વર રેક્સ, પાવર & કૂલિંગ સિસ્ટમ્સ, PUE (Power Usage Effectiveness)');
+        buffer.writeln('  - સ્ટોરેજ આર્કિટેક્ચર: DAS, NAS, SAN, Object Storage (S3)');
+        buffer.writeln('  - RAID Levels (RAID 0, 1, 5, 6, 10) અને High Availability\n');
+        buffer.writeln('• **Unit 3: Cloud Networking & Security**');
+        buffer.writeln('  - Virtual Private Cloud (VPC), Subnets, Routing Tables, Gateways');
+        buffer.writeln('  - Security Groups, Network ACLs, અને Identity & Access Management (IAM)');
+        buffer.writeln('  - Zero Trust Security Model, SSL/TLS Encryption');
+        buffer.writeln('  - Infrastructure as Code (IaC) - Terraform, CloudFormation\n');
+        buffer.writeln('• **Unit 4: Disaster Recovery & Cloud Operations**');
+        buffer.writeln('  - Business Continuity અને Disaster Recovery (BCDR)');
+        buffer.writeln('  - RTO (Recovery Time Objective) અને RPO (Recovery Point Objective)');
+        buffer.writeln('  - Auto-scaling, Elastic Load Balancing, CloudWatch Monitoring');
+      } else {
+        buffer.writeln('📘 **GTU Diploma Semester 5 — Cloud and Data Center Technology (CDCT)**');
+        buffer.writeln('📋 **Course Code:** `DI05016031` | **Department:** Information Technology (IT)\n');
+        buffer.writeln('📌 **Official GTU Syllabus Units & Core Topics:**\n');
+        buffer.writeln('• **Unit 1: Cloud Computing Foundations & Virtualization**');
+        buffer.writeln('  - Cloud service models: IaaS, PaaS, SaaS, FaaS (Serverless)');
+        buffer.writeln('  - Cloud deployment models: Public, Private, Hybrid, and Community Cloud');
+        buffer.writeln('  - Hardware Virtualization: Type-1 (Bare Metal) vs Type-2 (Hosted) Hypervisors');
+        buffer.writeln('  - Containerization technology: Docker containers vs Virtual Machines\n');
+        buffer.writeln('• **Unit 2: Data Center Architecture & Storage Infrastructure**');
+        buffer.writeln('  - Modern Data Center Design: Tiers 1 through 4 (Uptime Institute standards)');
+        buffer.writeln('  - Server rack design, power redundancy (UPS/Generators), and PUE efficiency metrics');
+        buffer.writeln('  - Storage architectures: Direct-Attached (DAS), Network-Attached (NAS), Storage Area Network (SAN)');
+        buffer.writeln('  - Object Storage, RAID redundancy (RAID 0, 1, 5, 6, 10), and data replication\n');
+        buffer.writeln('• **Unit 3: Cloud Networking & Security Architecture**');
+        buffer.writeln('  - Virtual Private Clouds (VPC), public/private subnets, Internet Gateways, NAT');
+        buffer.writeln('  - Network Security: Security Groups, Network ACLs, Firewalls, and IAM roles/policies');
+        buffer.writeln('  - Zero Trust Architecture, SSL/TLS certificate management, and data-at-rest encryption');
+        buffer.writeln('  - Infrastructure as Code (IaC) concepts with Terraform and Ansible\n');
+        buffer.writeln('• **Unit 4: Disaster Recovery & Cloud Operations**');
+        buffer.writeln('  - Business Continuity Planning (BCP) and Disaster Recovery (DR) strategies');
+        buffer.writeln('  - Calculating and optimizing RTO (Recovery Time Objective) and RPO (Recovery Point Objective)');
+        buffer.writeln('  - Automated backups, multi-region replication, and failover testing');
+        buffer.writeln('  - Cloud monitoring, telemetry, autoscaling groups, and load balancers');
+      }
+    } else if (sub == 'fbc') {
+      if (isGujarati) {
+        buffer.writeln('📘 **GTU ડિપ્લોમા સેમેસ્ટર 5 — Foundation of Blockchain (FBC)**');
+        buffer.writeln('📋 **વિષય કોડ:** `DI05016051` | **વિભાગ:** ઇન્ફોર્મેશન ટેકનોલોજી (IT)\n');
+        buffer.writeln('📌 **અભ્યાસક્રમ (Syllabus Units & Topics):**\n');
+        buffer.writeln('• **Unit 1: Blockchain Fundamentals & Cryptography**');
+        buffer.writeln('  - સેન્ટ્રલાઇઝ્ડ વિરુદ્ધ ડિસેન્ટ્રલાઇઝ્ડ સિસ્ટમ્સ (Decentralized Systems)');
+        buffer.writeln('  - ક્રિપ્ટોગ્રાફિક હેશિંગ (SHA-256) અને તેની વિશિષ્ટતાઓ');
+        buffer.writeln('  - Asymmetric Key Cryptography, Public-Private Key Pairs, Digital Signatures');
+        buffer.writeln('  - Merkle Tree Architecture અને Block Structure (Header, Nonce, Timestamp)\n');
+        buffer.writeln('• **Unit 2: Bitcoin Architecture & Consensus Mechanisms**');
+        buffer.writeln('  - Bitcoin Network અને Peer-to-Peer (P2P) Architecture');
+        buffer.writeln('  - UTXO (Unspent Transaction Output) મોડલ અને ટ્રાન્ઝેક્શન લાઇફસાઇકલ');
+        buffer.writeln('  - Wallets: Hot vs Cold Wallets, BIP-39 Seed Phrases & HD Wallets');
+        buffer.writeln('  - Consensus: Proof of Work (PoW), Mining, Difficulty Adjustment, Halving');
+        buffer.writeln('  - Proof of Stake (PoS) અને Forking (Hard Fork vs Soft Fork)\n');
+        buffer.writeln('• **Unit 3: Ethereum & Smart Contracts**');
+        buffer.writeln('  - Ethereum Virtual Machine (EVM) અને Account-based Model');
+        buffer.writeln('  - Gas Mechanics, Gas Limit, Gas Price');
+        buffer.writeln('  - Smart Contracts અને Solidity Programming Fundamentals');
+        buffer.writeln('  - Token Standards: ERC-20 (Fungible) અને ERC-721 (NFTs)\n');
+        buffer.writeln('• **Unit 4: DApps, Enterprise Blockchains & Applications**');
+        buffer.writeln('  - Web3 Architecture, MetaMask Wallet Integration, IPFS Storage');
+        buffer.writeln('  - Enterprise Blockchains: Hyperledger Fabric vs Ethereum');
+        buffer.writeln('  - બ્લોકચેઇન એપ્લિકેશન્સ: Supply Chain, Finance (DeFi), Identity Management');
+      } else {
+        buffer.writeln('📘 **GTU Diploma Semester 5 — Foundation of Blockchain (FBC)**');
+        buffer.writeln('📋 **Course Code:** `DI05016051` | **Department:** Information Technology (IT)\n');
+        buffer.writeln('📌 **Official GTU Syllabus Units & Core Topics:**\n');
+        buffer.writeln('• **Unit 1: Blockchain Fundamentals & Cryptography**');
+        buffer.writeln('  - Centralized vs Decentralized vs Distributed network topologies');
+        buffer.writeln('  - Cryptographic Hash Functions: Properties of SHA-256 and collision resistance');
+        buffer.writeln('  - Asymmetric Cryptography: Public/Private keys, Elliptic Curve (secp256k1), and Digital Signatures');
+        buffer.writeln('  - Merkle Trees, cryptographic verification, and Block Header Anatomy\n');
+        buffer.writeln('• **Unit 2: Bitcoin Architecture & Consensus Mechanisms**');
+        buffer.writeln('  - Bitcoin P2P architecture, node synchronization, and mempool');
+        buffer.writeln('  - The UTXO (Unspent Transaction Output) accounting model and transaction lifecycle');
+        buffer.writeln('  - Cryptographic Wallets: Hot vs Cold wallets, BIP-32/BIP-39 mnemonic seed phrases');
+        buffer.writeln('  - Consensus protocols: Proof of Work (PoW), difficulty adjustment, 21 million cap, halving');
+        buffer.writeln('  - Proof of Stake (PoS), Byzantine Fault Tolerance, Hard Forks vs Soft Forks\n');
+        buffer.writeln('• **Unit 3: Ethereum & Smart Contracts**');
+        buffer.writeln('  - Ethereum Virtual Machine (EVM), state transitions, and Account-based model');
+        buffer.writeln('  - Gas economic model: Gas Limit, Gas Price, Base Fee (EIP-1559), and execution fees');
+        buffer.writeln('  - Smart contract development with Solidity: data types, functions, modifiers, events');
+        buffer.writeln('  - Token standards: ERC-20 (Fungible Tokens) and ERC-721 (Non-Fungible Tokens / NFTs)\n');
+        buffer.writeln('• **Unit 4: DApps, Enterprise Blockchains & Real-World Use Cases**');
+        buffer.writeln('  - Web3 decentralized architecture: Frontend, RPC providers, MetaMask, and IPFS');
+        buffer.writeln('  - Permissioned enterprise blockchains: Hyperledger Fabric vs Public Blockchains');
+        buffer.writeln('  - Real-world applications: Supply Chain tracking, DeFi, Healthcare, and Identity Management');
+      }
+    } else {
+      // General Semester 5 IT Curriculum Summary
+      if (isGujarati) {
+        buffer.writeln('📘 **GTU ડિપ્લોમા ઇન્ફોર્મેશન ટેકનોલોજી — સેમેસ્ટર 5 સમગ્ર અભ્યાસક્રમ (Syllabus)**\n');
+        buffer.writeln('| ક્રમ | વિષય | વિષય કોડ | ક્રેડિટ્સ | મુખ્ય યુનિટ્સ |');
+        buffer.writeln('| :--- | :--- | :--- | :--- | :--- |');
+        buffer.writeln('| 1 | **Artificial Intelligence with Prompt Engineering (AIPE)** | `DI05016011` | 4 | 4 યુનિટ્સ (AI Basics, LLMs, Prompt Engg, RAG & Agents) |');
+        buffer.writeln('| 2 | **AI Product Design (AIPD)** | `DI05016021` | 4 | 3 યુનિટ્સ (Design Thinking, Lifecycle, UX & Ethics) |');
+        buffer.writeln('| 3 | **Cloud and Data Center Technology (CDCT)** | `DI05016031` | 4 | 4 યુનિટ્સ (Virtualization, DC Arch, Security, BCDR) |');
+        buffer.writeln('| 4 | **Foundation of Blockchain (FBC)** | `DI05016051` | 4 | 4 યુનિટ્સ (Crypto, Bitcoin/PoW, Ethereum/Solidity, Web3) |\n');
+        buffer.writeln('💡 **કોઈ ચોક્કસ વિષયનો ડિટેઇલ સિલેબસ જોવા માટે પૂછો:**');
+        buffer.writeln('• *"aipe syllabus"* અથવા *"syllabus of aipe"*');
+        buffer.writeln('• *"fbc syllabus"* અથવા *"cdct syllabus"*');
+      } else {
+        buffer.writeln('📘 **GTU Diploma Information Technology — Semester 5 Official Curriculum Overview**\n');
+        buffer.writeln('| # | Subject Name | Course Code | Credits | Core Units |');
+        buffer.writeln('| :--- | :--- | :--- | :--- | :--- |');
+        buffer.writeln('| 1 | **Artificial Intelligence with Prompt Engineering (AIPE)** | `DI05016011` | 4 | 4 Units (AI Search, LLMs, Prompt Engg, RAG & Agents) |');
+        buffer.writeln('| 2 | **AI Product Design (AIPD)** | `DI05016021` | 4 | 3 Units (Design Thinking, Lifecycle, AI UX & Ethics) |');
+        buffer.writeln('| 3 | **Cloud and Data Center Technology (CDCT)** | `DI05016031` | 4 | 4 Units (Virtualization, DC Arch, VPC/IAM, BCDR) |');
+        buffer.writeln('| 4 | **Foundation of Blockchain (FBC)** | `DI05016051` | 4 | 4 Units (Cryptography, Bitcoin, Ethereum/Solidity, Web3) |\n');
+        buffer.writeln('💡 **To view the complete topic-by-topic unit breakdown for any subject, ask:**');
+        buffer.writeln('• *"aipe syllabus"* or *"gtu syllabus of aipe"*');
+        buffer.writeln('• *"fbc syllabus"*, *"aipd syllabus"*, or *"cdct syllabus"*');
+      }
+    }
+
+    return buffer.toString().trim();
+  }
 }

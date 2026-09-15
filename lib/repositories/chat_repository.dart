@@ -439,95 +439,68 @@ class ChatRepository {
       );
     }
 
-    // B. Priority Syllabus Resolver (dedicated category-aware search)
+    // B. Priority Syllabus Resolver (dedicated deterministic GTU syllabus solver + official PDF)
     final bool isSyllabusQuery = lower.contains('syllabus') ||
         lower.contains('curriculum') ||
         lower.contains('અભ્યાસક્રમ') ||
         lower.contains('પાઠ્યક્રમ');
 
-    if (isSyllabusQuery && SupabaseService.client != null) {
-      try {
-        // Direct database query filtered by category = 'syllabus'
-        var syllabusQuery = SupabaseService.client!
-            .from('documents')
-            .select('*')
-            .eq('category', 'syllabus');
+    if (isSyllabusQuery) {
+      final String lang = isGujarati ? 'GUJARATI' : 'ENGLISH';
+      final syllabusText = AcademicSolverService.getSyllabusResponse(
+        userText: userText,
+        language: lang,
+        specificSubject: intentSubject,
+      );
 
-        if (currentInstId != null) {
-          syllabusQuery = syllabusQuery.eq('institution_id', currentInstId);
-        }
+      // Fetch the official syllabus document for the attachment card
+      Map<String, dynamic>? syllabusDoc;
+      if (SupabaseService.client != null) {
+        try {
+          final byId = await SupabaseService.client!
+              .from('documents')
+              .select('*')
+              .eq('id', '72e9a99e-afb3-4143-bc4e-fa7f5211176f')
+              .maybeSingle();
 
-        final syllabusResults = await syllabusQuery.order('title');
-
-        if (syllabusResults != null && (syllabusResults as List).isNotEmpty) {
-          List<Map<String, dynamic>> matchedDocs = [];
-
-          if (intentSubject != null) {
-            // Filter by subject code/name
-            final subjectFullName = _getSubjectFullName(intentSubject).toLowerCase();
-            final code = intentSubject.toLowerCase();
-
-            matchedDocs = syllabusResults.cast<Map<String, dynamic>>().where((doc) {
-              final title = (doc['title'] ?? '').toString().toLowerCase();
-              final subject = (doc['subject_name'] ?? '').toString().toLowerCase();
-              return title.contains(code) || subject.contains(code) ||
-                     title.contains(subjectFullName) || subject.contains(subjectFullName);
-            }).toList();
+          if (byId != null) {
+            syllabusDoc = Map<String, dynamic>.from(byId);
           } else {
-            // No specific subject — return all syllabi for the institution
-            matchedDocs = syllabusResults.cast<Map<String, dynamic>>();
+            final byQuery = await SupabaseService.client!
+                .from('documents')
+                .select('*')
+                .ilike('category', '%syllabus%')
+                .ilike('title', '%mid%')
+                .maybeSingle();
+            if (byQuery != null) {
+              syllabusDoc = Map<String, dynamic>.from(byQuery);
+            }
           }
+        } catch (_) {}
+      }
 
-          if (matchedDocs.isNotEmpty) {
-            final buffer = StringBuffer();
-            final subjectDisplay = intentSubject != null
-                ? _getSubjectFullName(intentSubject)
-                : 'your semester';
-            final primaryDoc = matchedDocs.first;
-            final dept = primaryDoc['department'] ?? 'Information Technology';
-            final sem = primaryDoc['semester'] ?? '5';
+      final String fileUrl = syllabusDoc?['file_url'] ??
+          'https://ifframkwyjegmxubscnk.supabase.co/storage/v1/object/public/documents/sem5/sem%205%20_mid%20syllabus_SEP-2026.pdf';
+      final String subjectDisplay = intentSubject != null ? _getSubjectFullName(intentSubject) : 'Information Technology Sem 5';
+      final String docTitle = syllabusDoc?['title'] ?? 'GTU IT Sem 5 Mid-Sem Syllabus (Winter 2026)';
+      final String dept = syllabusDoc?['department'] ?? 'Information Technology';
+      final String sem = syllabusDoc?['semester'] ?? '5';
 
-            if (isGujarati) {
-              buffer.writeln('📄 **$subjectDisplay** ($dept સેમેસ્ટર $sem) માટે ઉપલબ્ધ અભ્યાસક્રમ / સિલેબસ:');
-            } else {
-              buffer.writeln('Here is the **Syllabus / Curriculum** for **$subjectDisplay** ($dept Sem $sem):');
-            }
-
-            if (matchedDocs.length > 1) {
-              buffer.writeln('');
-              if (isGujarati) {
-                buffer.writeln('કુલ **${matchedDocs.length}** સિલેબસ દસ્તાવેજ ઉપલબ્ધ છે:\n');
-              } else {
-                buffer.writeln('**${matchedDocs.length}** syllabus documents available:\n');
-              }
-              for (int i = 0; i < matchedDocs.length; i++) {
-                buffer.writeln('${i + 1}. **${matchedDocs[i]['title']}**');
-              }
-            }
-
-            final desc = (primaryDoc['description'] ?? primaryDoc['content_summary'] ?? '').toString().trim();
-            if (desc.isNotEmpty && !desc.startsWith('This document contains the class')) {
-              buffer.writeln('\n$desc');
-            }
-
-            return ChatMessageModel(
-              id: DateTime.now().millisecondsSinceEpoch.toString(),
-              sender: ChatSender.ai,
-              text: buffer.toString().trim(),
-              timestamp: DateTime.now(),
-              dataType: ChatDataType.none,
-              payload: {
-                'fileUrl': primaryDoc['file_url'],
-                'title': primaryDoc['title'],
-                'category': 'SYLLABUS',
-                'subject': primaryDoc['subject_name'] ?? subjectDisplay,
-                'department': dept,
-                'semester': sem,
-              },
-            );
-          }
-        }
-      } catch (_) {}
+      return ChatMessageModel(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        sender: ChatSender.ai,
+        text: syllabusText,
+        timestamp: DateTime.now(),
+        dataType: ChatDataType.timetable,
+        payload: {
+          'fileUrl': fileUrl,
+          'title': docTitle,
+          'category': 'SYLLABUS',
+          'subject': subjectDisplay,
+          'department': dept,
+          'semester': sem,
+        },
+      );
     }
 
     // C. Priority Lab Manual Resolver (dedicated category-aware search)
@@ -550,7 +523,7 @@ class ChatRepository {
 
         final labResults = await labQuery.order('title');
 
-        if (labResults != null && (labResults as List).isNotEmpty) {
+        if ((labResults as List).isNotEmpty) {
           List<Map<String, dynamic>> matchedDocs = [];
 
           if (intentSubject != null) {
