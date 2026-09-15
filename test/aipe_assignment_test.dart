@@ -1,8 +1,7 @@
-﻿import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:parent_ai/core/services/academic_solver_service.dart';
 import 'package:parent_ai/repositories/chat_repository.dart';
 import 'package:parent_ai/models/college_model.dart';
-import 'package:parent_ai/models/chat_message_model.dart';
 
 void main() {
   group('AIPE Assignment 2 Resolution Tests', () {

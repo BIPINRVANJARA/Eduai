@@ -1,5 +1,6 @@
 import '../core/services/academic_solver_service.dart';
 import '../core/services/supabase_service.dart';
+import '../core/services/timetable_service.dart';
 import '../models/chat_message_model.dart';
 import '../models/college_model.dart';
 import '../models/student_model.dart';
@@ -184,7 +185,7 @@ class ChatRepository {
         lower.contains('પરિણામ') ||
         lower.contains('grade'));
 
-    final bool isQuestionAnsweringRequest = !hasDocumentIntent && (
+    final bool isQuestionAnsweringRequest = (
         lower.contains('que') ||
         lower.contains('question') ||
         lower.contains('ans') ||
@@ -341,7 +342,6 @@ class ChatRepository {
     final int? intentAssignNum = academicIntent['assignmentNumber'] as int?;
     final bool isExamSchedule = academicIntent['isExamSchedule'] == true;
 
-    // A. Priority Exam Schedule & Timetable Resolver (Direct zero-hallucination table + PDF card)
     final bool isExplicitClassTT = lower.contains('class timetable') ||
         lower.contains('class time table') ||
         lower.contains('class schedule') ||
@@ -349,6 +349,93 @@ class ChatRepository {
         lower.contains('lecture schedule') ||
         lower.contains('weekly timetable') ||
         lower.contains('regular timetable');
+
+    // ═══════════════════════════════════════════════════════════════════
+    // A0. REAL-TIME CURRENT LECTURE & DAILY CLASS TIMETABLE SOLVER
+    // (Extracted from official IT Department Timetable Excel for Sem 1, 3, 5)
+    // ═══════════════════════════════════════════════════════════════════
+    final bool isCurrentLectureQuery = lower.contains('current lecture') ||
+        lower.contains('current class') ||
+        lower.contains('lecture now') ||
+        lower.contains('class now') ||
+        lower.contains('which lecture') ||
+        lower.contains('what lecture') ||
+        lower.contains('next lecture') ||
+        lower.contains('next class') ||
+        lower.contains('going on') ||
+        (lower.contains('right now') && (lower.contains('lecture') || lower.contains('class') || lower.contains('lab'))) ||
+        (lower.contains('હમણાં') && (lower.contains('લેક્ચર') || lower.contains('ક્લાસ') || lower.contains('ચાલુ'))) ||
+        lower.contains('ચાલુ લેક્ચર') ||
+        lower.contains('હવે કયો લેક્ચર');
+
+    final bool isDailyTimetableQuery = isExplicitClassTT ||
+        lower.contains("today's timetable") ||
+        lower.contains("today timetable") ||
+        lower.contains("today's schedule") ||
+        lower.contains("today schedule") ||
+        lower.contains("tomorrow's timetable") ||
+        lower.contains("tomorrow timetable") ||
+        lower.contains("tomorrow schedule") ||
+        lower.contains("monday timetable") ||
+        lower.contains("tuesday timetable") ||
+        lower.contains("wednesday timetable") ||
+        lower.contains("thursday timetable") ||
+        lower.contains("friday timetable") ||
+        lower.contains("આજનો ટાઈમટેબલ") ||
+        lower.contains("આજનો સમયપત્રક") ||
+        lower.contains("આવતીકાલનો ટાઈમટેબલ") ||
+        ((lower.contains('timetable') || lower.contains('time table')) &&
+         !lower.contains('exam') &&
+         !lower.contains('mid') &&
+         !lower.contains('પરીક્ષા'));
+
+    if (isCurrentLectureQuery) {
+      final String lang = isGujarati ? 'GUJARATI' : 'ENGLISH';
+      final responseText = TimetableService.getCurrentLectureResponse(
+        userText: userText,
+        studentSemester: student?.semester ?? 5,
+        language: lang,
+      );
+
+      return ChatMessageModel(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        sender: ChatSender.ai,
+        text: responseText,
+        timestamp: DateTime.now(),
+        dataType: ChatDataType.timetable,
+        payload: {
+          'title': 'IT Department Real-Time Class Schedule',
+          'category': 'TIMETABLE',
+          'department': 'Information Technology',
+          'semester': (student?.semester ?? 5).toString(),
+        },
+      );
+    }
+
+    if (isDailyTimetableQuery) {
+      final String lang = isGujarati ? 'GUJARATI' : 'ENGLISH';
+      final responseText = TimetableService.getDailyScheduleResponse(
+        userText: userText,
+        studentSemester: student?.semester ?? 5,
+        language: lang,
+      );
+
+      return ChatMessageModel(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        sender: ChatSender.ai,
+        text: responseText,
+        timestamp: DateTime.now(),
+        dataType: ChatDataType.timetable,
+        payload: {
+          'title': 'IT Department Daily Class Timetable',
+          'category': 'TIMETABLE',
+          'department': 'Information Technology',
+          'semester': (student?.semester ?? 5).toString(),
+        },
+      );
+    }
+
+    // A. Priority Exam Schedule & Timetable Resolver (Direct zero-hallucination table + PDF card)
 
     final bool isExamScheduleQuery = !isExplicitClassTT && (
         isExamSchedule ||
